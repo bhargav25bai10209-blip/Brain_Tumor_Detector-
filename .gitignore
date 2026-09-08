@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
+
+# Local training data is too large for the application repository.
+MRI_dataset/
+
+# Generated analysis images and local exports.
+*_history.png
+confusion_matrix.png
+gradcam_samples.png
+sample_predictions.png
+
+# Local Streamlit and notebook state.
+.streamlit/secrets.toml
+.ipynb_checkpoints/
