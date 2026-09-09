@@ -165,7 +165,10 @@ def load_model_and_labels():
     if not os.path.exists(model_file):
         return None, None
 
-    model = tf.keras.models.load_model(model_file)
+    model = tf.keras.models.load_model(
+        model_file,
+        compile=False,
+    )
 
     if os.path.exists(LABELS_PATH):
         with open(LABELS_PATH) as f:
