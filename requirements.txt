@@ -1,9 +1,7 @@
-streamlit
+gradio>=4.44.0
 tensorflow-cpu==2.15.1
 keras==2.15.0
 numpy==1.26.4
 pillow
 matplotlib
-seaborn
-scikit-learn
 plotly

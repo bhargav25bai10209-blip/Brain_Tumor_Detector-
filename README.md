@@ -1,33 +1,31 @@
-# Brain Tumor MRI Classifier
+---
+title: Brain Tumor MRI Classifier
+emoji: 🧠
+colorFrom: blue
+colorTo: purple
+sdk: gradio
+sdk_version: 4.44.1
+app_file: gradio_app.py
+pinned: false
+license: mit
+---
 
-A Streamlit web app that classifies uploaded brain MRI images into glioma, meningioma, pituitary tumor, or no tumor. It also displays confidence scores and an optional Grad-CAM visualization.
+# 🧠 Brain Tumor MRI Classifier
 
-## Run locally
+A deep learning model that classifies brain MRI scans into 4 categories:
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-streamlit run app.py
-```
+- 🔴 **Glioma** — arises from glial cells; most common primary brain tumor
+- 🟠 **Meningioma** — originates in the meninges; usually benign
+- 🟢 **No Tumor** — MRI appears normal
+- 🟣 **Pituitary Tumor** — forms near the pituitary gland
 
-The app expects `brain_tumor_model.keras` (or the fallback `brain_tumor_model.h5`) and `class_names.json` in the project root.
+## Model Architecture
 
-## Deploy with Streamlit Community Cloud
+- **Base**: MobileNetV2 (ImageNet pretrained)
+- **Training**: 2-phase transfer learning + fine-tuning from layer 100
+- **Dataset**: 5,600 training / 1,600 testing MRI images
+- **Features**: Grad-CAM attention maps, confidence scores, JSON report export
 
-[![Deploy to Streamlit Community Cloud](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=bhargav25bai10209-blip/Brain_Tumor_Detector-&branch=main&mainModule=app.py)
+## ⚕️ Medical Disclaimer
 
-Use the button above, or open this direct deployment link:
-
-<https://share.streamlit.io/deploy?repository=bhargav25bai10209-blip/Brain_Tumor_Detector-&branch=main&mainModule=app.py>
-
-1. Push this repository to GitHub.
-2. Open [share.streamlit.io](https://share.streamlit.io/) and choose **New app**.
-3. Select the repository, branch, and `app.py` as the main file.
-4. Deploy the app.
-
-The `MRI_dataset/` directory is intentionally excluded from GitHub because it is training data, not required at runtime. The trained model files are included so the hosted app can make predictions.
-
-## Important
-
-This project is for educational and research use only. Predictions are not a medical diagnosis and must not replace review by a qualified healthcare professional.
+This tool is intended for **research and educational purposes only**. It is **not a medical device** and must not be used as a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified radiologist or physician for clinical decisions.
