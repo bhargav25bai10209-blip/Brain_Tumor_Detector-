@@ -15,6 +15,12 @@ The app expects `brain_tumor_model.keras` (or the fallback `brain_tumor_model.h5
 
 ## Deploy with Streamlit Community Cloud
 
+[![Deploy to Streamlit Community Cloud](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=bhargav25bai10209-blip/Brain_Tumor_Detector-&branch=main&mainModule=app.py)
+
+Use the button above, or open this direct deployment link:
+
+<https://share.streamlit.io/deploy?repository=bhargav25bai10209-blip/Brain_Tumor_Detector-&branch=main&mainModule=app.py>
+
 1. Push this repository to GitHub.
 2. Open [share.streamlit.io](https://share.streamlit.io/) and choose **New app**.
 3. Select the repository, branch, and `app.py` as the main file.
