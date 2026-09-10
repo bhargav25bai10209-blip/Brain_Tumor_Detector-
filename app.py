@@ -153,6 +153,27 @@ CLASS_CONFIG = {
     "pituitary":  {"badge": "badge-pituitary",   "icon": "🟣", "desc": "Pituitary Tumor — forms near the pituitary gland."},
 }
 
+MODEL_METRICS = {
+    "overall_accuracy": 88.56,
+    "macro_avg": {"precision": 89.00, "recall": 88.56, "f1_score": 88.28},
+    "weighted_avg": {"precision": 89.00, "recall": 88.56, "f1_score": 88.28},
+    "classes": {
+        "glioma":     {"name": "Glioma",     "precision": 95.56, "recall": 75.25, "f1": 84.20, "support": 400},
+        "meningioma": {"name": "Meningioma", "precision": 85.00, "recall": 80.75, "f1": 82.82, "support": 400},
+        "notumor":    {"name": "No Tumor",   "precision": 90.66, "recall": 99.50, "f1": 94.87, "support": 400},
+        "pituitary":  {"name": "Pituitary",  "precision": 84.76, "recall": 98.75, "f1": 91.22, "support": 400},
+    },
+    "confusion_matrix": {
+        "labels": ["glioma", "meningioma", "notumor", "pituitary"],
+        "matrix": [
+            [301, 53, 29, 17],
+            [13, 323, 10, 54],
+            [1, 1, 398, 0],
+            [0, 3, 2, 395]
+        ]
+    }
+}
+
 
 # ── Model & utils loading ──────────────────────────────────
 
@@ -414,7 +435,12 @@ with col_right:
         )
 
         # ── Metrics row ───────────────────────────────────
-        m1, m2, m3 = st.columns(3)
+        cls_m = MODEL_METRICS["classes"].get(pred_cls, {})
+        rec_val  = cls_m.get("recall", 0.0)
+        f1_val   = cls_m.get("f1", 0.0)
+        prec_val = cls_m.get("precision", 0.0)
+
+        m1, m2, m3, m4 = st.columns(4)
         with m1:
             st.markdown(
                 f'<div class="metric-box">'
@@ -425,17 +451,47 @@ with col_right:
         with m2:
             st.markdown(
                 f'<div class="metric-box">'
-                f'<div class="metric-label">Classes</div>'
-                f'<div class="metric-value">{len(class_names)}</div>'
+                f'<div class="metric-label">Class Recall</div>'
+                f'<div class="metric-value">{rec_val:.1f}%</div>'
                 f'</div>', unsafe_allow_html=True
             )
         with m3:
             st.markdown(
                 f'<div class="metric-box">'
-                f'<div class="metric-label">Status</div>'
-                f'<div class="metric-value">{"⚠️" if uncertain else "✅"}</div>'
+                f'<div class="metric-label">Class F1-Score</div>'
+                f'<div class="metric-value">{f1_val:.1f}%</div>'
                 f'</div>', unsafe_allow_html=True
             )
+        with m4:
+            st.markdown(
+                f'<div class="metric-box">'
+                f'<div class="metric-label">Test Accuracy</div>'
+                f'<div class="metric-value">{MODEL_METRICS["overall_accuracy"]:.1f}%</div>'
+                f'</div>', unsafe_allow_html=True
+            )
+
+        st.markdown("---")
+
+        # ── Model Performance & Confusion Matrix ───────────
+        with st.expander("📊 Model Validation Metrics & Confusion Matrix (1,600 Test Scans)", expanded=True):
+            st.markdown("##### 📈 Per-Class Performance Breakdown")
+            metrics_data = []
+            for c in ["glioma", "meningioma", "notumor", "pituitary"]:
+                info = MODEL_METRICS["classes"][c]
+                is_detected = "👉 " if c == pred_cls else ""
+                metrics_data.append({
+                    "Class": f"{is_detected}{info['name']}",
+                    "Recall": f"{info['recall']:.2f}%",
+                    "F1-Score": f"{info['f1']:.2f}%",
+                    "Precision": f"{info['precision']:.2f}%",
+                    "Test Samples": info["support"]
+                })
+            st.table(metrics_data)
+
+            cm_path = os.path.join(BASE_DIR, "confusion_matrix.png")
+            if os.path.exists(cm_path):
+                st.markdown("##### 🔲 Confusion Matrix Heatmap")
+                st.image(cm_path, caption="Brain Tumor Classification Confusion Matrix (1,600 Test Scans)", use_container_width=True)
 
         st.markdown("---")
 
@@ -482,6 +538,19 @@ with col_right:
             "confidence_pct": round(confidence, 2),
             "uncertain": uncertain,
             "class_probabilities": {c: round(v, 2) for c, v in probs_pct.items()},
+            "validation_metrics": {
+                "detected_class_metrics": {
+                    "class": pred_cls,
+                    "recall_pct": rec_val,
+                    "f1_score_pct": f1_val,
+                    "precision_pct": prec_val,
+                    "support": cls_m.get("support", 400)
+                },
+                "overall_test_accuracy_pct": MODEL_METRICS["overall_accuracy"],
+                "macro_average_pct": MODEL_METRICS["macro_avg"],
+                "per_class_summary": MODEL_METRICS["classes"],
+                "confusion_matrix": MODEL_METRICS["confusion_matrix"]
+            }
         }
         st.download_button(
             label="📄 Download Report (JSON)",

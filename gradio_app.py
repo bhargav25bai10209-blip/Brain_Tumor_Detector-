@@ -30,6 +30,27 @@ CLASS_CONFIG = {
     "pituitary":  {"color": "#a78bfa", "icon": "🟣", "desc": "Forms near the pituitary gland; often treatable."},
 }
 
+MODEL_METRICS = {
+    "overall_accuracy": 88.56,
+    "macro_avg": {"precision": 89.00, "recall": 88.56, "f1_score": 88.28},
+    "weighted_avg": {"precision": 89.00, "recall": 88.56, "f1_score": 88.28},
+    "classes": {
+        "glioma":     {"name": "Glioma",     "precision": 95.56, "recall": 75.25, "f1": 84.20, "support": 400},
+        "meningioma": {"name": "Meningioma", "precision": 85.00, "recall": 80.75, "f1": 82.82, "support": 400},
+        "notumor":    {"name": "No Tumor",   "precision": 90.66, "recall": 99.50, "f1": 94.87, "support": 400},
+        "pituitary":  {"name": "Pituitary",  "precision": 84.76, "recall": 98.75, "f1": 91.22, "support": 400},
+    },
+    "confusion_matrix": {
+        "labels": ["glioma", "meningioma", "notumor", "pituitary"],
+        "matrix": [
+            [301, 53, 29, 17],
+            [13, 323, 10, 54],
+            [1, 1, 398, 0],
+            [0, 3, 2, 395]
+        ]
+    }
+}
+
 # ── Model loading ────────────────────────────────────────────
 _model       = None
 _class_names = None
@@ -192,41 +213,103 @@ def predict(pil_img, show_gradcam):
           ⚠️ <b>Low Confidence ({confidence:.1f}%)</b> — result may be unreliable. Consult a radiologist.
         </div>"""
 
-    result_html = f"""
-    <div style="font-family:'Inter',sans-serif;color:#e2e8f0;">
-      {warning_html}
-      <div style="display:inline-block;background:{badge_bg};border:1px solid {badge_border};
-                  border-radius:40px;padding:10px 24px;font-size:1.4rem;font-weight:700;
-                  color:{badge_color};letter-spacing:0.03em;margin-bottom:14px;">
-        {icon}&nbsp; {display_cls}
-      </div>
-      <p style="color:#94a3b8;font-size:0.92rem;margin:0 0 18px;">{desc}</p>
+    cls_m = MODEL_METRICS["classes"].get(pred_cls, {})
+    rec_val  = cls_m.get("recall", 0.0)
+    f1_val   = cls_m.get("f1", 0.0)
+    prec_val = cls_m.get("precision", 0.0)
 
-      <div style="display:flex;gap:14px;margin-bottom:10px;">
-        <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
-                    border-radius:12px;padding:14px 18px;text-align:center;">
-          <div style="font-size:0.74rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Confidence</div>
-          <div style="font-size:1.9rem;font-weight:700;color:#e2e8f0;margin-top:4px;">{confidence:.1f}%</div>
-        </div>
-        <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
-                    border-radius:12px;padding:14px 18px;text-align:center;">
-          <div style="font-size:0.74rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Classes</div>
-          <div style="font-size:1.9rem;font-weight:700;color:#e2e8f0;margin-top:4px;">{len(class_names)}</div>
-        </div>
-        <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
-                    border-radius:12px;padding:14px 18px;text-align:center;">
-          <div style="font-size:0.74rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Status</div>
-          <div style="font-size:1.9rem;font-weight:700;margin-top:4px;">{"⚠️" if uncertain else "✅"}</div>
-        </div>
-      </div>
+    # Per-class table rows
+    rows_html = ""
+    for c in ["glioma", "meningioma", "notumor", "pituitary"]:
+        cm = MODEL_METRICS["classes"][c]
+        is_active = (c == pred_cls)
+        bg = "background:rgba(56,189,248,0.14);border-left:3px solid #38bdf8;" if is_active else ""
+        fw = "font-weight:700;color:#fff;" if is_active else "color:#cbd5e1;"
+        dot_color = CLASS_CONFIG.get(c, {}).get("color", "#94a3b8")
+        c_name = cm["name"]
+        c_rec = f"{cm['recall']:.1f}%"
+        c_f1 = f"{cm['f1']:.1f}%"
+        c_prec = f"{cm['precision']:.1f}%"
+        c_sup = cm["support"]
+        rows_html += f"""
+          <tr style="{bg}">
+            <td style="padding:6px 8px;{fw}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:{dot_color};margin-right:6px;"></span>{c_name}</td>
+            <td style="padding:6px 8px;text-align:center;{fw}">{c_rec}</td>
+            <td style="padding:6px 8px;text-align:center;{fw}">{c_f1}</td>
+            <td style="padding:6px 8px;text-align:center;{fw}">{c_prec}</td>
+            <td style="padding:6px 8px;text-align:center;color:#94a3b8;">{c_sup}</td>
+          </tr>
+          """
 
-      <p style="font-size:0.72rem;color:#475569;border-top:1px solid rgba(255,255,255,0.07);
-               padding-top:12px;margin-top:8px;line-height:1.6;">
-        ⚕️ <b>Medical Disclaimer:</b> This tool is for research and educational purposes only.
-        It is <b>not a medical device</b> and must not replace professional medical advice.
-        Always consult a qualified radiologist or physician for clinical decisions.
-      </p>
-    </div>
+        result_html = f"""
+      <div style="font-family:'Inter',sans-serif;color:#e2e8f0;">
+        {warning_html}
+        <div style="display:inline-block;background:{badge_bg};border:1px solid {badge_border};
+                    border-radius:40px;padding:10px 24px;font-size:1.4rem;font-weight:700;
+                    color:{badge_color};letter-spacing:0.03em;margin-bottom:14px;">
+          {icon}&nbsp; {display_cls}
+        </div>
+        <p style="color:#94a3b8;font-size:0.92rem;margin:0 0 16px;">{desc}</p>
+
+        <!-- 4-Card Metrics Row -->
+        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;margin-bottom:18px;">
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 8px;text-align:center;">
+            <div style="font-size:0.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Confidence</div>
+            <div style="font-size:1.4rem;font-weight:700;color:#e2e8f0;margin-top:2px;">{confidence:.1f}%</div>
+            <div style="font-size:0.62rem;color:#64748b;">Certainty</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 8px;text-align:center;">
+            <div style="font-size:0.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Class Recall</div>
+            <div style="font-size:1.4rem;font-weight:700;color:#38bdf8;margin-top:2px;">{rec_val:.1f}%</div>
+            <div style="font-size:0.62rem;color:#64748b;">Sensitivity</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 8px;text-align:center;">
+            <div style="font-size:0.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Class F1-Score</div>
+            <div style="font-size:1.4rem;font-weight:700;color:#c084fc;margin-top:2px;">{f1_val:.1f}%</div>
+            <div style="font-size:0.62rem;color:#64748b;">Harmonic Mean</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 8px;text-align:center;">
+            <div style="font-size:0.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Test Accuracy</div>
+            <div style="font-size:1.4rem;font-weight:700;color:#34d399;margin-top:2px;">{MODEL_METRICS['overall_accuracy']:.1f}%</div>
+            <div style="font-size:0.62rem;color:#64748b;">1.6k Test Scans</div>
+          </div>
+        </div>
+
+        <!-- Per-Class Metrics Table -->
+        <div style="background:rgba(10,15,30,0.6);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;margin-bottom:14px;">
+          <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#cbd5e1;margin-bottom:8px;">
+            📊 Model Performance Breakdown (Test Set)
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
+            <thead>
+              <tr style="color:#64748b;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08);font-size:0.68rem;">
+                <th style="text-align:left;padding:4px 8px;">CLASS</th>
+                <th style="padding:4px 8px;">RECALL</th>
+                <th style="padding:4px 8px;">F1-SCORE</th>
+                <th style="padding:4px 8px;">PRECISION</th>
+                <th style="padding:4px 8px;">SUPPORT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows_html}
+            </tbody>
+            <tfoot>
+              <tr style="border-top:1px solid rgba(255,255,255,0.12);font-weight:700;color:#38bdf8;text-align:center;">
+                <td style="text-align:left;padding:6px 8px;">Overall / Macro</td>
+                <td style="padding:6px 8px;">{MODEL_METRICS['macro_avg']['recall']:.1f}%</td>
+                <td style="padding:6px 8px;">{MODEL_METRICS['macro_avg']['f1_score']:.1f}%</td>
+                <td style="padding:6px 8px;">{MODEL_METRICS['macro_avg']['precision']:.1f}%</td>
+                <td style="padding:6px 8px;color:#94a3b8;">1,600</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <p style="font-size:0.72rem;color:#475569;border-top:1px solid rgba(255,255,255,0.07);
+                 padding-top:10px;margin-top:4px;line-height:1.5;">
+          ⚕️ <b>Medical Disclaimer:</b> Research and educational demo only. Not an FDA-cleared device.
+        </p>
+      </div>
     """
 
     # ── Confidence chart ────────────────────────────────────
@@ -263,6 +346,19 @@ def predict(pil_img, show_gradcam):
         "confidence_pct":      round(confidence, 2),
         "uncertain":           uncertain,
         "class_probabilities": {c: round(v, 2) for c, v in probs_pct.items()},
+        "validation_metrics": {
+            "detected_class_metrics": {
+                "class": pred_cls,
+                "recall_pct": rec_val,
+                "f1_score_pct": f1_val,
+                "precision_pct": prec_val,
+                "support": cls_m.get("support", 400)
+            },
+            "overall_test_accuracy_pct": MODEL_METRICS["overall_accuracy"],
+            "macro_average_pct": MODEL_METRICS["macro_avg"],
+            "per_class_summary": MODEL_METRICS["classes"],
+            "confusion_matrix": MODEL_METRICS["confusion_matrix"]
+          }
     }
     report_path = os.path.join(BASE_DIR, "_report.json")
     with open(report_path, "w") as f:
@@ -400,6 +496,10 @@ with gr.Blocks(css=CUSTOM_CSS, title="Brain Tumor MRI Classifier") as demo:
             chart_output = gr.Plot(label="📊 Class Probabilities")
             gradcam_out  = gr.Image(label="🔥 Grad-CAM — Model Attention", visible=True)
             report_dl    = gr.File(label="📄 Download Report (JSON)", visible=True)
+            with gr.Accordion("📊 Model Evaluation & Confusion Matrix (1,600 Test Scans)", open=False):
+                cm_img_path = os.path.join(BASE_DIR, "confusion_matrix.png")
+                if os.path.exists(cm_img_path):
+                    gr.Image(cm_img_path, label="Confusion Matrix Heatmap", interactive=False)
 
     # ── Wire up ────────────────────────────────────────────
     run_btn.click(
