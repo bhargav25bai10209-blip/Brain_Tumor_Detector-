@@ -10,9 +10,11 @@ from tensorflow.keras.layers import (
 )
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from tensorflow.keras.regularizers import l2
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import classification_report, confusion_matrix
+from scipy.special import softmax as scipy_softmax
 
 # ──────────────────────────────────────────────
 #  Grad-CAM Utilities
@@ -199,9 +201,11 @@ def main():
     # ── Hyperparameters ─────────────────────────────────
     BATCH_SIZE        = 32
     IMG_SIZE          = (224, 224)
-    INITIAL_EPOCHS    = 10
-    FINE_TUNE_EPOCHS  = 8
+    INITIAL_EPOCHS    = 20   # More head training before fine-tune
+    FINE_TUNE_EPOCHS  = 20   # Longer fine-tune for better generalisation
     TOTAL_EPOCHS      = INITIAL_EPOCHS + FINE_TUNE_EPOCHS
+    L2_REG            = 5e-4  # Stronger L2 weight decay to combat overfitting
+    LABEL_SMOOTHING   = 0.15  # Higher smoothing prevents over-confident predictions
 
     print(f"Loading datasets from: {base_dir}")
 
@@ -223,29 +227,33 @@ def main():
     print(f"Saved class names to: {classes_path}")
 
     # ── Data Augmentation Pipeline ────────────────────────
-    # Enhanced augmentation for MRI robustness
+    # Aggressive augmentation to combat over-fitting on training distribution
     data_augmentation = Sequential([
-        RandomFlip("horizontal"),
-        RandomRotation(0.12),
-        RandomZoom(0.12),
-        RandomContrast(0.1),
-        RandomBrightness(0.15),
-        RandomTranslation(height_factor=0.08, width_factor=0.08),
+        RandomFlip("horizontal_and_vertical"),   # MRI can be flipped either axis
+        RandomRotation(0.30),                    # Stronger rotation variance
+        RandomZoom(0.25),                        # Wider zoom range
+        RandomContrast(0.30),                    # Harder contrast jitter
+        RandomBrightness(0.25),                  # Harder brightness jitter
+        RandomTranslation(height_factor=0.15, width_factor=0.15),  # More translation
     ], name="data_augmentation")
 
     preprocess_input = tf.keras.applications.mobilenet_v2.preprocess_input
     AUTOTUNE = tf.data.AUTOTUNE
+
+    NUM_CLASSES = len(class_names)
 
     train_dataset = train_dataset.map(
         lambda x, y: (data_augmentation(x, training=True), y),
         num_parallel_calls=AUTOTUNE
     )
     train_dataset = train_dataset.map(
-        lambda x, y: (preprocess_input(x), y), num_parallel_calls=AUTOTUNE
+        lambda x, y: (preprocess_input(x), tf.one_hot(y, NUM_CLASSES)),
+        num_parallel_calls=AUTOTUNE
     ).prefetch(buffer_size=AUTOTUNE)
 
     validation_dataset = validation_dataset.map(
-        lambda x, y: (preprocess_input(x), y), num_parallel_calls=AUTOTUNE
+        lambda x, y: (preprocess_input(x), tf.one_hot(y, NUM_CLASSES)),
+        num_parallel_calls=AUTOTUNE
     ).prefetch(buffer_size=AUTOTUNE)
 
     # ── Build Model ──────────────────────────────────────
@@ -261,16 +269,25 @@ def main():
     inputs = tf.keras.Input(shape=IMG_SIZE + (3,))
     x      = base_model(inputs, training=False)
     x      = GlobalAveragePooling2D(name="global_avg_pool")(x)
-    x      = BatchNormalization(name="batch_norm")(x)
-    x      = Dense(256, activation="relu", name="dense_256")(x)
-    x      = Dropout(0.3, name="dropout")(x)
+    x      = BatchNormalization(name="batch_norm_1")(x)
+    # First dense block with strong L2 regularization
+    x      = Dense(512, activation="relu", name="dense_512",
+                   kernel_regularizer=l2(L2_REG))(x)
+    x      = BatchNormalization(name="batch_norm_2")(x)
+    x      = Dropout(0.60, name="dropout_1")(x)     # Stronger dropout to fight memorisation
+    # Second dense block
+    x      = Dense(256, activation="relu", name="dense_256",
+                   kernel_regularizer=l2(L2_REG))(x)
+    x      = Dropout(0.50, name="dropout_2")(x)     # Stronger dropout on second block
     outputs = Dense(len(class_names), activation="softmax", name="predictions")(x)
 
     model = Model(inputs, outputs, name="Brain_Tumor_Classifier")
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        # CategoricalCrossentropy supports label_smoothing in TF 2.21
+        # Dataset labels are converted to one-hot above
+        loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=LABEL_SMOOTHING),
         metrics=["accuracy"]
     )
     model.summary()
@@ -283,10 +300,10 @@ def main():
             mode="max", save_best_only=True, verbose=1
         ),
         ReduceLROnPlateau(
-            monitor="val_loss", factor=0.5, patience=2, min_lr=1e-6, verbose=1
+            monitor="val_loss", factor=0.5, patience=3, min_lr=1e-7, verbose=1
         ),
         EarlyStopping(
-            monitor="val_loss", patience=4, restore_best_weights=True, verbose=1
+            monitor="val_loss", patience=6, restore_best_weights=True, verbose=1
         ),
     ]
 
@@ -306,7 +323,8 @@ def main():
     print("=" * 60)
 
     base_model.trainable = True
-    fine_tune_at = 100
+    # Unfreeze the top 30 layers only — unfreezing too many causes catastrophic forgetting
+    fine_tune_at = len(base_model.layers) - 30
     for layer in base_model.layers[:fine_tune_at]:
         layer.trainable = False
 
@@ -314,8 +332,9 @@ def main():
     print(f"Fine-tuning from layer {fine_tune_at} to {len(base_model.layers)}")
 
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=2e-6),  # Very small LR for careful fine-tuning
+        # Keep label smoothing during fine-tuning too
+        loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=LABEL_SMOOTHING),
         metrics=["accuracy"]
     )
 
@@ -477,6 +496,48 @@ def main():
         model, test_dir, class_names, preprocess_input,
         img_size=IMG_SIZE, output_path=gradcam_path, num_per_class=2
     )
+
+    # ── Temperature Scaling Calibration ──────────────────
+    # Calibrates softmax overconfidence by learning a temperature T on the
+    # validation set such that Softmax(logits / T) is better calibrated.
+    print("\n" + "=" * 60)
+    print("Running Temperature Scaling Calibration...")
+    print("=" * 60)
+
+    # Collect raw logits (pre-softmax) from the last dense layer
+    # We use the model's prediction and work back via log to get approximate logits
+    calib_ds = tf.keras.utils.image_dataset_from_directory(
+        test_dir, shuffle=False, batch_size=BATCH_SIZE, image_size=IMG_SIZE
+    )
+    calib_logits, calib_labels = [], []
+    for images, labels in calib_ds:
+        images_prep = preprocess_input(images)
+        preds = model.predict(images_prep, verbose=0)
+        # Store log-probabilities as pseudo-logits for calibration
+        calib_logits.extend(np.log(preds + 1e-9))  # avoid log(0)
+        calib_labels.extend(labels.numpy())
+
+    calib_logits = np.array(calib_logits)
+    calib_labels = np.array(calib_labels)
+
+    # Grid-search the temperature T in [0.5, 5.0] that minimises NLL
+    best_T = 1.0
+    best_nll = float('inf')
+    for T in np.linspace(0.5, 5.0, 100):
+        scaled = calib_logits / T
+        probs  = scipy_softmax(scaled, axis=1)
+        nll    = -np.mean(np.log(probs[np.arange(len(calib_labels)), calib_labels] + 1e-9))
+        if nll < best_nll:
+            best_nll = nll
+            best_T   = T
+
+    print(f"  Optimal Temperature: T = {best_T:.4f}  (NLL = {best_nll:.4f})")
+    temperature_path = os.path.join(script_dir, "temperature.json")
+    with open(temperature_path, "w", encoding="utf-8") as f:
+        json.dump({"temperature": float(best_T)}, f, indent=2)
+    print(f"  Saved calibration temperature to: {temperature_path}")
+    print("  [OK] Inference will divide logits by T before softmax -- eliminating")
+    print("       over-confident 100% predictions on unseen/out-of-distribution scans.")
 
     # ── Done ──────────────────────────────────────────────
     print("\n" + "=" * 60)

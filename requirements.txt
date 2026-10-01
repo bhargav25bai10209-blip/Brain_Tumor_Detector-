@@ -1,7 +1,9 @@
 gradio>=4.44.0
-tensorflow-cpu==2.15.1
-keras==2.15.0
-numpy==1.26.4
+tensorflow-cpu>=2.22.0
+numpy>=1.26.4
 pillow
 matplotlib
 plotly
+scipy>=1.11.0
+scikit-learn>=1.3.0
+seaborn>=0.13.0

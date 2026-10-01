@@ -91,7 +91,7 @@ model_json_path = os.path.join(OUTPUT_DIR, "model.json")
 with open(model_json_path, 'w') as f:
     json.dump(model_json, f)
 
-print(f"\n✅ Done! model.json written ({os.path.getsize(model_json_path)/1024:.1f} KB)")
+print(f"\n[DONE] model.json written ({os.path.getsize(model_json_path)/1024:.1f} KB)")
 print(f"\nFiles in {OUTPUT_DIR}/:")
 for fname in sorted(os.listdir(OUTPUT_DIR)):
     size = os.path.getsize(os.path.join(OUTPUT_DIR, fname))
