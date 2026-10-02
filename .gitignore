@@ -1,9 +1,10 @@
 __pycache__/
 *.py[cod]
-.venv/
+.venv*/
 venv/
 env/
 .env
+hf_space/
 
 # Local training data is too large for the application repository.
 MRI_dataset/
