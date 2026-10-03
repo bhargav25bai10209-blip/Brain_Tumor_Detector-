@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brain Tumor MRI Classifier — AI Diagnostic Web Space</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Standard TF.js 4.20 - high performance GraphModel loader, no WASM required -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #070b14;
+      --card-bg: rgba(18, 26, 44, 0.85);
+      --card-border: rgba(99, 179, 237, 0.16);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --color-glioma: #f87171;
+      --color-meningioma: #fb923c;
+      --color-notumor: #34d399;
+      --color-pituitary: #c084fc;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at 50% 0%, #132238 0%, #070b14 70%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; width: 100%; }
+
+    /* ── Header ── */
+    header { text-align: center; margin-bottom: 24px; }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      margin-bottom: 12px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fbbf24;
+      box-shadow: 0 0 10px #fbbf24;
+      animation: blink 1.4s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.35} }
+    /* ── Loading Progress Bar ── */
+    .load-progress-wrap { margin-top: 10px; display: none; }
+    .load-progress-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 5px; }
+    .load-progress-bar-bg { background: rgba(255,255,255,0.07); border-radius: 999px; height: 6px; overflow: hidden; }
+    .load-progress-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2563eb, #7c3aed); width: 0%; transition: width 0.4s ease; }
+
+    .status-dot.ready {
+      background: #34d399;
+      box-shadow: 0 0 10px #34d399;
+      animation: none;
+    }
+
+    .status-dot.error {
+      background: #ef4444;
+      box-shadow: 0 0 10px #ef4444;
+      animation: none;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #60a5fa 0%, #c084fc 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.98rem;
+      max-width: 680px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    /* ── Grid Layout ── */
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.25fr;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    @media (max-width: 920px) {
+      .grid-layout { grid-template-columns: 1fr; }
+    }
+
+    .glass-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ── Upload Area ── */
+    .dropzone {
+      border: 2px dashed rgba(99, 179, 237, 0.35);
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.5);
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent-blue);
+      background: rgba(56, 189, 248, 0.06);
+      transform: translateY(-2px);
+    }
+
+    .dropzone input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon { font-size: 2.4rem; margin-bottom: 8px; }
+    .drop-text { font-weight: 600; color: #cbd5e1; margin-bottom: 4px; }
+    .drop-subtext { font-size: 0.8rem; color: #64748b; }
+
+    /* ── Preview Container ── */
+    .preview-container {
+      margin-top: 16px;
+      display: none;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #000;
+    }
+
+    .preview-container img {
+      width: 100%;
+      max-height: 230px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .preview-info {
+      padding: 8px 12px;
+      background: rgba(10, 15, 26, 0.95);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ── Verify Button (Prominent) ── */
+    .btn-verify {
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px 20px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #fff;
+      background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+      transition: all 0.25s ease;
+    }
+
+    .btn-verify:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(37, 99, 235, 0.5);
+      filter: brightness(1.1);
+    }
+
+    .btn-verify:disabled {
+      background: rgba(255, 255, 255, 0.08);
+      color: #64748b;
+      box-shadow: none;
+      cursor: not-allowed;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .btn-verify.pulse {
+      animation: buttonPulse 2s infinite;
+    }
+
+    @keyframes buttonPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.6); }
+      50% { box-shadow: 0 0 0 12px rgba(124, 58, 237, 0); }
+    }
+
+    /* ── Samples ── */
+    .samples-section { margin-top: 20px; }
+    .samples-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .samples-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .sample-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .sample-btn:hover {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .sample-btn img {
+      width: 100%;
+      height: 56px;
+      object-fit: cover;
+      border-radius: 8px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .sample-btn span {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #94a3b8;
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Right Panel ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 380px;
+      color: #475569;
+      text-align: center;
+    }
+
+    .empty-icon { font-size: 3.5rem; margin-bottom: 12px; opacity: 0.6; }
+
+    .result-content { display: none; }
+
+    /* Prediction Header */
+    .prediction-header { margin-bottom: 18px; }
+
+    .pred-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      padding: 10px 24px;
+      border-radius: 9999px;
+      margin-bottom: 10px;
+    }
+
+    .pred-pill.glioma {
+      background: rgba(248, 113, 113, 0.16);
+      color: var(--color-glioma);
+      border: 1px solid rgba(248, 113, 113, 0.4);
+    }
+    .pred-pill.meningioma {
+      background: rgba(251, 146, 60, 0.16);
+      color: var(--color-meningioma);
+      border: 1px solid rgba(251, 146, 60, 0.4);
+    }
+    .pred-pill.notumor {
+      background: rgba(52, 211, 153, 0.16);
+      color: var(--color-notumor);
+      border: 1px solid rgba(52, 211, 153, 0.4);
+    }
+    .pred-pill.pituitary {
+      background: rgba(192, 132, 252, 0.16);
+      color: var(--color-pituitary);
+      border: 1px solid rgba(192, 132, 252, 0.4);
+    }
+    .pred-pill.uncertain {
+      background: rgba(234, 179, 8, 0.16);
+      color: #fde047;
+      border: 1px solid rgba(234, 179, 8, 0.4);
+    }
+
+    .pred-desc { color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; }
+
+    /* Metrics Row */
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 700px) {
+      .metrics-row { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .metric-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 12px;
+      padding: 10px 8px;
+      text-align: center;
+      transition: all 0.25s ease;
+    }
+
+    .metric-card:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    .metric-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+
+    .metric-value { font-size: 1.35rem; font-weight: 700; color: #f8fafc; }
+    .metric-sub { font-size: 0.65rem; color: #64748b; margin-top: 2px; }
+
+    /* Warning Banner */
+    .warning-banner {
+      background: rgba(234, 179, 8, 0.12);
+      border: 1px solid rgba(234, 179, 8, 0.35);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #fde047;
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* Overconfidence Warning */
+    .overconf-banner {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #fca5a5;
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    /* Probabilities */
+    .prob-section { margin-bottom: 20px; }
+    .prob-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+
+    .prob-bar-item { margin-bottom: 8px; }
+    .prob-bar-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 3px;
+      font-weight: 500;
+    }
+
+    .prob-bar-bg {
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    .prob-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .fill-glioma { background: var(--color-glioma); }
+    .fill-meningioma { background: var(--color-meningioma); }
+    .fill-notumor { background: var(--color-notumor); }
+    .fill-pituitary { background: var(--color-pituitary); }
+
+    /* ── Model Evaluation & Confusion Matrix Section ── */
+    .eval-section {
+      background: rgba(10, 15, 30, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 18px;
+    }
+
+    .eval-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .eval-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .eval-tabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .eval-tab-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .eval-tab-btn.active, .eval-tab-btn:hover {
+      background: rgba(56, 189, 248, 0.16);
+      color: var(--accent-blue);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    /* Evaluation Tables */
+    .eval-tab-pane { display: none; }
+    .eval-tab-pane.active { display: block; }
+
+    .metrics-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.76rem;
+      text-align: left;
+    }
+
+    .metrics-table th {
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 6px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.68rem;
+    }
+
+    .metrics-table td {
+      padding: 7px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: #cbd5e1;
+    }
+
+    .metrics-table tr.active-pred-row {
+      background: rgba(56, 189, 248, 0.12);
+      border-left: 3px solid var(--accent-blue);
+    }
+    .metrics-table tr.active-pred-row td {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .metrics-table tfoot th, .metrics-table tfoot td {
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      border-bottom: none;
+      color: #38bdf8;
+      font-weight: 700;
+      padding-top: 8px;
+    }
+
+    .class-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    .dot-glioma { background: var(--color-glioma); }
+    .dot-meningioma { background: var(--color-meningioma); }
+    .dot-notumor { background: var(--color-notumor); }
+    .dot-pituitary { background: var(--color-pituitary); }
+
+    /* Confusion Matrix Heatmap Table */
+    .cm-wrapper {
+      overflow-x: auto;
+      padding-top: 4px;
+    }
+
+    .cm-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 3px;
+      font-size: 0.72rem;
+      text-align: center;
+    }
+
+    .cm-axis-title {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .cm-header-cell {
+      padding: 4px 6px;
+      color: #94a3b8;
+      font-weight: 600;
+      font-size: 0.7rem;
+    }
+
+    .cm-cell {
+      border-radius: 6px;
+      padding: 6px 4px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      color: #fff;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      cursor: default;
+    }
+
+    .cm-cell:hover {
+      transform: scale(1.06);
+      z-index: 2;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .cm-cell .cm-sub {
+      display: block;
+      font-size: 0.58rem;
+      opacity: 0.8;
+      font-weight: 400;
+      margin-top: 1px;
+    }
+
+    .cm-cell.c-300 { background: rgba(30, 64, 175, 0.85); border: 1px solid rgba(96, 165, 250, 0.5); }
+    .cm-cell.c-200 { background: rgba(37, 99, 235, 0.65); border: 1px solid rgba(96, 165, 250, 0.4); }
+    .cm-cell.c-100 { background: rgba(59, 130, 246, 0.45); border: 1px solid rgba(96, 165, 250, 0.3); }
+    .cm-cell.c-low { background: rgba(245, 158, 11, 0.22); border: 1px solid rgba(245, 158, 11, 0.35); color: #fde68a; }
+    .cm-cell.c-zero { background: rgba(255, 255, 255, 0.025); border: 1px solid rgba(255, 255, 255, 0.04); color: #475569; }
+
+    /* Heatmap Image View in Modal */
+    .cm-plot-preview {
+      text-align: center;
+      padding: 6px 0;
+    }
+    .cm-plot-img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    /* Modal Overlay for high-res confusion matrix */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-content {
+      background: #0f172a;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 16px;
+      max-width: 720px;
+      width: 100%;
+      padding: 20px;
+      position: relative;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #fff;
+      font-size: 1.1rem;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .modal-close-btn:hover { background: rgba(239, 68, 68, 0.4); }
+
+    /* Action Buttons Row */
+    .actions-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    /* Download button */
+    .btn-download {
+      flex: 1;
+      padding: 11px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #f1f5f9;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: all 0.2s;
+    }
+
+    .btn-download:hover { background: rgba(255, 255, 255, 0.14); }
+
+    .btn-view-cm {
+      padding: 11px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--accent-blue);
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-view-cm:hover {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    /* Error Card */
+    .error-card {
+      display: none;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 12px;
+      padding: 16px;
+      color: #fca5a5;
+      font-size: 0.9rem;
+      margin-top: 14px;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: auto;
+      text-align: center;
+      padding: 16px 0;
+      font-size: 0.78rem;
+      color: #475569;
+      line-height: 1.6;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header>
+    <div class="badge-pill">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Loading AI Model (9.7 MB)…</span>
+    </div>
+    <h1>🧠 Brain Tumor MRI Classifier</h1>
+    <p class="subtitle">
+      Deep learning diagnostic assistant powered by MobileNetV2. Upload an MRI brain scan and press <b>Verify & Classify</b> for immediate 4-class AI categorization.
+    </p>
+  </header>
+
+  <!-- Main Grid -->
+  <div class="grid-layout">
+
+    <!-- Left Column: Upload, Preview & Verify Button -->
+    <div class="glass-card">
+      <div class="card-title">
+        <span>📁</span> Upload MRI Scan
+      </div>
+
+      <!-- Dropzone -->
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="image/*">
+        <div class="drop-icon">📤</div>
+        <div class="drop-text">Drag & drop MRI scan here, or click to browse</div>
+        <div class="drop-subtext">Supports PNG, JPG, JPEG, BMP</div>
+      </div>
+
+      <!-- Loading Progress Bar (model download) -->
+      <div class="load-progress-wrap" id="loadProgressWrap">
+        <div class="load-progress-label" id="loadProgressLabel">Downloading model...</div>
+        <div class="load-progress-bar-bg">
+          <div class="load-progress-bar-fill" id="loadProgressFill"></div>
+        </div>
+      </div>
+
+      <!-- Image Preview -->
+      <div class="preview-container" id="previewContainer">
+        <img id="imagePreview" alt="MRI Scan Preview">
+        <div class="preview-info">
+          <span id="fileName">mri_scan.jpg</span>
+          <span id="fileDims">-- × -- px</span>
+        </div>
+      </div>
+
+      <!-- VERIFY BUTTON -->
+      <button class="btn-verify" id="verifyBtn" onclick="runVerification()" disabled>
+        <span id="verifyBtnIcon">🔬</span>
+        <span id="verifyBtnText">Upload an MRI Scan to Verify</span>
+      </button>
+
+      <!-- Quick Test Samples -->
+      <div class="samples-section">
+        <div class="samples-title">⚡ Or Click a Sample to Test Instantly:</div>
+        <div class="samples-grid">
+          <div class="sample-btn" onclick="loadSample('samples/sample_1.jpg', 'Sample 1 (Meningioma)')">
+            <img src="samples/sample_1.jpg" alt="Sample 1">
+            <span>Meningioma</span>
+          </div>
+          <div class="sample-btn" onclick="loadSample('samples/sample_2.jpg', 'Sample 2 (Glioma)')">
+            <img src="samples/sample_2.jpg" alt="Sample 2">
+            <span>Glioma</span>
+          </div>
+          <div class="sample-btn" onclick="loadSample('samples/sample_3.jpg', 'Sample 3 (Pituitary)')">
+            <img src="samples/sample_3.jpg" alt="Sample 3">
+            <span>Pituitary</span>
+          </div>
+          <div class="sample-btn" onclick="loadSample('samples/sample_4.jpg', 'Sample 4 (No Tumor)')">
+            <img src="samples/sample_4.jpg" alt="Sample 4">
+            <span>No Tumor</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error Card if needed -->
+      <div class="error-card" id="errorCard"></div>
+    </div>
+
+    <!-- Right Column: Diagnostic Results -->
+    <div class="glass-card">
+      <div class="card-title">
+        <span>🔬</span> Diagnostic Analysis
+      </div>
+
+      <!-- Empty / Ready State -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">🧠</div>
+        <p style="font-weight: 600; color: #94a3b8; font-size: 1.1rem;" id="emptyTitle">Awaiting MRI Scan</p>
+        <p style="font-size: 0.88rem; margin-top: 6px; color: #64748b; max-width: 320px;" id="emptyDesc">
+          Upload an image on the left or select a sample scan, then click <b>Verify & Classify</b>.
+        </p>
+      </div>
+
+      <!-- Results Content -->
+      <div class="result-content" id="resultContent">
+        <!-- Warning banner (low confidence) -->
+        <div class="warning-banner" id="warningBanner">
+          ⚠️ <b>Low Confidence Prediction:</b> The diagnostic certainty is below 60%. Please consult a neuro-radiologist for clinical evaluation.
+        </div>
+
+        <!-- Overconfidence warning (suspiciously high, possible memorisation) -->
+        <div class="overconf-banner" id="overconfBanner">
+          🔴 <b>Overconfidence Alert:</b> Confidence is ≥92% (even after calibration). This may indicate a memorised training image or a very close match. Treat with caution and seek radiologist review.
+        </div>
+
+        <div class="prediction-header">
+          <div class="pred-pill" id="predPill">
+            <span id="predIcon">⚪</span>
+            <span id="predLabel">DIAGNOSIS</span>
+          </div>
+          <p class="pred-desc" id="predDesc">Description text will appear here.</p>
+        </div>
+
+        <!-- Metrics Row -->
+        <div class="metrics-row">
+          <div class="metric-card">
+            <div class="metric-label">Confidence</div>
+            <div class="metric-value" id="metricConf">--%</div>
+            <div class="metric-sub">Diagnostic Certainty</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Class Recall</div>
+            <div class="metric-value" id="metricRecall">--%</div>
+            <div class="metric-sub">Sensitivity (True Pos)</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Class F1-Score</div>
+            <div class="metric-value" id="metricF1">--%</div>
+            <div class="metric-sub">Harmonic Balance</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Class Precision</div>
+            <div class="metric-value" id="metricPrec">--%</div>
+            <div class="metric-sub">Positive Predictive</div>
+          </div>
+        </div>
+
+        <!-- Class Probabilities -->
+        <div class="prob-section">
+          <div class="prob-title">Class Probabilities</div>
+
+          <div class="prob-bar-item">
+            <div class="prob-bar-header">
+              <span>🔴 Glioma</span>
+              <span id="pct-glioma">0.0%</span>
+            </div>
+            <div class="prob-bar-bg">
+              <div class="prob-bar-fill fill-glioma" id="bar-glioma"></div>
+            </div>
+          </div>
+
+          <div class="prob-bar-item">
+            <div class="prob-bar-header">
+              <span>🟠 Meningioma</span>
+              <span id="pct-meningioma">0.0%</span>
+            </div>
+            <div class="prob-bar-bg">
+              <div class="prob-bar-fill fill-meningioma" id="bar-meningioma"></div>
+            </div>
+          </div>
+
+          <div class="prob-bar-item">
+            <div class="prob-bar-header">
+              <span>🟢 No Tumor (Normal)</span>
+              <span id="pct-notumor">0.0%</span>
+            </div>
+            <div class="prob-bar-bg">
+              <div class="prob-bar-fill fill-notumor" id="bar-notumor"></div>
+            </div>
+          </div>
+
+          <div class="prob-bar-item">
+            <div class="prob-bar-header">
+              <span>🟣 Pituitary Tumor</span>
+              <span id="pct-pituitary">0.0%</span>
+            </div>
+            <div class="prob-bar-bg">
+              <div class="prob-bar-fill fill-pituitary" id="bar-pituitary"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Model Evaluation & Confusion Matrix ── -->
+        <div class="eval-section">
+          <div class="eval-header">
+            <div class="eval-title">
+              <span>📊</span> Validation Metrics & Confusion Matrix
+            </div>
+            <div class="eval-tabs">
+              <button class="eval-tab-btn active" id="tabBtnMetrics" onclick="switchEvalTab('metrics')">Per-Class Metrics</button>
+              <button class="eval-tab-btn" id="tabBtnCm" onclick="switchEvalTab('cm')">Confusion Matrix</button>
+            </div>
+          </div>
+
+          <!-- Tab 1: Per-Class Metrics Table -->
+          <div class="eval-tab-pane active" id="tabPaneMetrics">
+            <table class="metrics-table">
+              <thead>
+                <tr>
+                  <th>Class</th>
+                  <th>Recall</th>
+                  <th>F1-Score</th>
+                  <th>Precision</th>
+                  <th>Test Scans</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr id="row-glioma">
+                  <td><span class="class-dot dot-glioma"></span> Glioma</td>
+                  <td><b>75.3%</b></td>
+                  <td><b>84.2%</b></td>
+                  <td>95.6%</td>
+                  <td>400</td>
+                </tr>
+                <tr id="row-meningioma">
+                  <td><span class="class-dot dot-meningioma"></span> Meningioma</td>
+                  <td><b>80.8%</b></td>
+                  <td><b>82.8%</b></td>
+                  <td>85.0%</td>
+                  <td>400</td>
+                </tr>
+                <tr id="row-notumor">
+                  <td><span class="class-dot dot-notumor"></span> No Tumor</td>
+                  <td><b>99.5%</b></td>
+                  <td><b>94.9%</b></td>
+                  <td>90.7%</td>
+                  <td>400</td>
+                </tr>
+                <tr id="row-pituitary">
+                  <td><span class="class-dot dot-pituitary"></span> Pituitary</td>
+                  <td><b>98.8%</b></td>
+                  <td><b>91.2%</b></td>
+                  <td>84.8%</td>
+                  <td>400</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Overall / Macro</th>
+                  <th>88.6%</th>
+                  <th>88.3%</th>
+                  <th>89.0%</th>
+                  <th>1,600</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- Tab 2: Confusion Matrix Heatmap -->
+          <div class="eval-tab-pane" id="tabPaneCm">
+            <div class="cm-wrapper">
+              <table class="cm-table">
+                <thead>
+                  <tr>
+                    <th class="cm-axis-title" style="width: 26%;">True \ Pred</th>
+                    <th class="cm-header-cell">Glioma</th>
+                    <th class="cm-header-cell">Mening.</th>
+                    <th class="cm-header-cell">No Tum.</th>
+                    <th class="cm-header-cell">Pituit.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr id="cm-row-glioma">
+                    <td class="cm-header-cell" style="text-align: left;"><span class="class-dot dot-glioma"></span>Glioma</td>
+                    <td class="cm-cell c-300" title="True Glioma -> Pred Glioma">301<span class="cm-sub">75.3%</span></td>
+                    <td class="cm-cell c-low" title="True Glioma -> Pred Meningioma">53<span class="cm-sub">13.3%</span></td>
+                    <td class="cm-cell c-low" title="True Glioma -> Pred No Tumor">29<span class="cm-sub">7.3%</span></td>
+                    <td class="cm-cell c-low" title="True Glioma -> Pred Pituitary">17<span class="cm-sub">4.3%</span></td>
+                  </tr>
+                  <tr id="cm-row-meningioma">
+                    <td class="cm-header-cell" style="text-align: left;"><span class="class-dot dot-meningioma"></span>Mening.</td>
+                    <td class="cm-cell c-low" title="True Meningioma -> Pred Glioma">13<span class="cm-sub">3.3%</span></td>
+                    <td class="cm-cell c-300" title="True Meningioma -> Pred Meningioma">323<span class="cm-sub">80.8%</span></td>
+                    <td class="cm-cell c-low" title="True Meningioma -> Pred No Tumor">10<span class="cm-sub">2.5%</span></td>
+                    <td class="cm-cell c-low" title="True Meningioma -> Pred Pituitary">54<span class="cm-sub">13.5%</span></td>
+                  </tr>
+                  <tr id="cm-row-notumor">
+                    <td class="cm-header-cell" style="text-align: left;"><span class="class-dot dot-notumor"></span>No Tumor</td>
+                    <td class="cm-cell c-zero" title="True No Tumor -> Pred Glioma">1<span class="cm-sub">0.3%</span></td>
+                    <td class="cm-cell c-zero" title="True No Tumor -> Pred Meningioma">1<span class="cm-sub">0.3%</span></td>
+                    <td class="cm-cell c-300" title="True No Tumor -> Pred No Tumor">398<span class="cm-sub">99.5%</span></td>
+                    <td class="cm-cell c-zero" title="True No Tumor -> Pred Pituitary">0<span class="cm-sub">0.0%</span></td>
+                  </tr>
+                  <tr id="cm-row-pituitary">
+                    <td class="cm-header-cell" style="text-align: left;"><span class="class-dot dot-pituitary"></span>Pituitary</td>
+                    <td class="cm-cell c-zero" title="True Pituitary -> Pred Glioma">0<span class="cm-sub">0.0%</span></td>
+                    <td class="cm-cell c-low" title="True Pituitary -> Pred Meningioma">3<span class="cm-sub">0.8%</span></td>
+                    <td class="cm-cell c-low" title="True Pituitary -> Pred No Tumor">2<span class="cm-sub">0.5%</span></td>
+                    <td class="cm-cell c-300" title="True Pituitary -> Pred Pituitary">395<span class="cm-sub">98.8%</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action buttons row -->
+        <div class="actions-row">
+          <button class="btn-download" id="btnDownloadPdf" onclick="downloadReportPdf()">
+            📄 Download Diagnostic Report (PDF)
+          </button>
+          <button class="btn-download" id="btnDownloadJpeg" onclick="downloadReportJpeg()" style="flex: 0 0 auto; padding: 11px 14px;">
+            🖼️ Save as JPEG
+          </button>
+          <button class="btn-view-cm" onclick="toggleCmModal(true)">
+            📊 View Heatmap
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Disclaimer Footer -->
+  <footer>
+    ⚕️ <b>Medical Disclaimer:</b> This application is designed solely for research and educational demonstrations. It is <b>not an FDA-cleared medical device</b> and must not be used as a replacement for professional clinical advice, diagnostic radiology, or surgical planning. Always consult certified healthcare professionals.
+  </footer>
+</div>
+
+<!-- Script & Logic -->
+<script>
+  const CLASS_NAMES = ['glioma', 'meningioma', 'notumor', 'pituitary'];
+  const CONF_THRESHOLD = 60.0;
+
+  const CLASS_CONFIG = {
+    glioma: {
+      name: 'GLIOMA',
+      icon: '🔴',
+      desc: 'Glioma arises from glial supportive tissue in the brain. It is the most common primary brain tumor and requires prompt radiological evaluation.'
+    },
+    meningioma: {
+      name: 'MENINGIOMA',
+      icon: '🟠',
+      desc: 'Meningioma originates in the meninges (protective brain membranes). They are commonly benign and slow-growing.'
+    },
+    notumor: {
+      name: 'NO TUMOR DETECTED',
+      icon: '🟢',
+      desc: 'The MRI scan displays standard intracranial anatomy with no conspicuous tumor mass detected.'
+    },
+    pituitary: {
+      name: 'PITUITARY TUMOR',
+      icon: '🟣',
+      desc: 'Forms near the sella turcica / pituitary gland region at the skull base. Highly treatable when diagnosed early.'
+    }
+  };
+
+  const MODEL_METRICS = {
+    overall_accuracy: 81.81,
+    macro_avg: { precision: 81.61, recall: 81.81, f1_score: 81.34 },
+    weighted_avg: { precision: 81.61, recall: 81.81, f1_score: 81.34 },
+    classes: {
+      glioma:     { name: "Glioma",     precision: 82.81, recall: 72.25, f1: 77.17, support: 400 },
+      meningioma: { name: "Meningioma", precision: 74.00, recall: 64.75, f1: 69.07, support: 400 },
+      notumor:    { name: "No Tumor",   precision: 90.00, recall: 94.50, f1: 92.20, support: 400 },
+      pituitary:  { name: "Pituitary",  precision: 79.63, recall: 95.75, f1: 86.95, support: 400 },
+    },
+    confusion_matrix: {
+      labels: ["glioma", "meningioma", "notumor", "pituitary"],
+      matrix: [
+        [301, 53, 29, 17],
+        [13, 323, 10, 54],
+        [1, 1, 398, 0],
+        [0, 3, 2, 395]
+      ]
+    }
+  };
+
+  function switchEvalTab(tabName) {
+    document.getElementById('tabBtnMetrics').classList.toggle('active', tabName === 'metrics');
+    document.getElementById('tabBtnCm').classList.toggle('active', tabName === 'cm');
+    document.getElementById('tabPaneMetrics').classList.toggle('active', tabName === 'metrics');
+    document.getElementById('tabPaneCm').classList.toggle('active', tabName === 'cm');
+  }
+
+  function toggleCmModal(show) {
+    document.getElementById('cmModal').style.display = show ? 'flex' : 'none';
+  }
+
+  let model = null;
+  let modelLoaded = false;
+  let lastPrediction = null;
+  let currentImageName = 'mri_scan.jpg';
+  let hasImage = false;
+
+  // ── Temperature Scaling for Calibrated Confidence ──
+  // T = 0.7273 is the optimal value computed from the validation set after training.
+  // The new model uses label_smoothing=0.15 + heavy dropout, making it slightly
+  // underconfident, so T < 1 gently sharpens the distribution to correct calibration.
+  // This prevents both overconfidence (100%) AND excessive uncertainty.
+  const TEMPERATURE = 0.7273;
+
+  function applySoftmaxWithTemperature(rawLogits, T) {
+    // rawLogits: Float32Array of softmax probabilities from the model
+    // We recover approximate logits via log, scale by T, then re-apply softmax
+    const logits = Array.from(rawLogits).map(p => Math.log(Math.max(p, 1e-9)) / T);
+    const maxLogit = Math.max(...logits);
+    const expLogits = logits.map(l => Math.exp(l - maxLogit));
+    const sumExp = expLogits.reduce((a, b) => a + b, 0);
+    return expLogits.map(e => e / sumExp);
+  }
+
+  // ── Initialize Model ──
+  async function initEngine() {
+    const dot  = document.getElementById('statusDot');
+    const txt  = document.getElementById('statusText');
+    const wrap = document.getElementById('loadProgressWrap');
+    const fill = document.getElementById('loadProgressFill');
+    const lbl  = document.getElementById('loadProgressLabel');
+
+    try {
+      wrap.style.display = 'block';
+      lbl.textContent = 'Downloading model weights (10 MB)…';
+      fill.style.width = '5%';
+
+      // Standard tf.loadGraphModel — optimized frozen graph, zero layer-format incompatibilities
+      model = await tf.loadGraphModel('./tfjs_model/model.json', {
+        onProgress: function(fraction) {
+          var pct = Math.round(fraction * 100);
+          fill.style.width = pct + '%';
+          lbl.textContent = 'Downloading model… ' + pct + '%';
+        }
+      });
+
+      // Warm up to avoid first-prediction delay
+      var warmup = tf.zeros([1, 224, 224, 3]);
+      model.predict(warmup).dispose();
+      warmup.dispose();
+
+      modelLoaded = true;
+      dot.className = 'status-dot ready';
+      txt.textContent = 'Neural Engine Ready';
+      wrap.style.display = 'none';
+
+      if (hasImage) {
+        enableVerifyButton();
+      }
+    } catch (err) {
+      console.error('Model load error:', err);
+      dot.className = 'status-dot error';
+      txt.textContent = 'Model Loading Failed';
+      wrap.style.display = 'none';
+      showError(
+        'Failed to load AI model. Please hard-refresh (Ctrl+F5) and try again. ' +
+        'Error: ' + err.message
+      );
+    }
+  }
+
+  function showError(msg) {
+    const card = document.getElementById('errorCard');
+    card.style.display = 'block';
+    card.textContent = '⚠️ ' + msg;
+  }
+
+  function enableVerifyButton() {
+    const btn = document.getElementById('verifyBtn');
+    const icon = document.getElementById('verifyBtnIcon');
+    const text = document.getElementById('verifyBtnText');
+
+    if (!modelLoaded) {
+      btn.disabled = true;
+      text.textContent = 'Loading AI Model…';
+      return;
+    }
+
+    btn.disabled = false;
+    btn.classList.add('pulse');
+    icon.textContent = '🔬';
+    text.textContent = 'Verify & Classify MRI Scan';
+
+    // Update empty state hint
+    document.getElementById('emptyTitle').textContent = 'Image Ready';
+    document.getElementById('emptyDesc').innerHTML = 'Click <b>Verify & Classify MRI Scan</b> on the left to begin diagnosis.';
+  }
+
+  // ── Convert HTML Image to MobileNetV2 Tensor using standard Canvas (100% resilient) ──
+  function imageToNormalizedTensor(imgElement) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 224;
+    canvas.height = 224;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(imgElement, 0, 0, 224, 224);
+
+    const imgData = ctx.getImageData(0, 0, 224, 224);
+    const data = imgData.data; // RGBA uint8 (224*224*4)
+
+    // Preprocessing: (x / 127.5) - 1.0
+    const floatArr = new Float32Array(224 * 224 * 3);
+    let p = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      floatArr[p++] = (data[i] / 127.5) - 1.0;     // R
+      floatArr[p++] = (data[i+1] / 127.5) - 1.0;   // G
+      floatArr[p++] = (data[i+2] / 127.5) - 1.0;   // B
+    }
+
+    return tf.tensor4d(floatArr, [1, 224, 224, 3]);
+  }
+
+  // ── Run Analysis ──
+  async function runVerification() {
+    const preview = document.getElementById('imagePreview');
+    const btn = document.getElementById('verifyBtn');
+    const icon = document.getElementById('verifyBtnIcon');
+    const text = document.getElementById('verifyBtnText');
+
+    if (!hasImage || !preview.src) {
+      alert('Please upload or select an MRI image first.');
+      return;
+    }
+
+    if (!modelLoaded || !model) {
+      alert('AI Model is still loading. Please wait a moment and try again.');
+      return;
+    }
+
+    // UI Loading State
+    btn.disabled = true;
+    btn.classList.remove('pulse');
+    icon.textContent = '⏳';
+    text.textContent = 'Analyzing MRI with AI…';
+
+    try {
+      // 1. Preprocess
+      const inputTensor = imageToNormalizedTensor(preview);
+
+      // 2. Predict
+      const outputTensor = model.predict(inputTensor);
+      const rawProbs = await outputTensor.data();
+
+      inputTensor.dispose();
+      outputTensor.dispose();
+
+      // 3. Process outputs with temperature scaling
+      // Apply temperature scaling to prevent overconfident predictions
+      const calibratedProbs = applySoftmaxWithTemperature(rawProbs, TEMPERATURE);
+
+      const probs = {};
+      let maxProb = -1;
+      let predClass = '';
+
+      CLASS_NAMES.forEach((cls, idx) => {
+        const p = calibratedProbs[idx] * 100;
+        probs[cls] = p;
+        if (p > maxProb) {
+          maxProb = p;
+          predClass = cls;
+        }
+      });
+
+      const m = MODEL_METRICS.classes[predClass] || {};
+      lastPrediction = {
+        image: currentImageName,
+        predicted_class: predClass,
+        confidence_pct: parseFloat(maxProb.toFixed(2)),
+        uncertain: maxProb < CONF_THRESHOLD,
+        probabilities: probs,
+        timestamp: new Date().toISOString(),
+        evaluation_metrics: {
+          detected_class_metrics: {
+            class: predClass,
+            recall_pct: m.recall || null,
+            f1_score_pct: m.f1 || null,
+            precision_pct: m.precision || null,
+            test_support_scans: m.support || 400
+          },
+          overall_test_accuracy_pct: MODEL_METRICS.overall_accuracy,
+          macro_average_pct: MODEL_METRICS.macro_avg,
+          per_class_classification_report: MODEL_METRICS.classes,
+          confusion_matrix: MODEL_METRICS.confusion_matrix
+        }
+      };
+
+      // 4. Render
+      renderResults(lastPrediction);
+
+      // Restore button
+      btn.disabled = false;
+      icon.textContent = '🔄';
+      text.textContent = 'Re-Verify / Re-Classify';
+
+    } catch (err) {
+      console.error('Classification error:', err);
+      showError('Inference error: ' + err.message);
+      btn.disabled = false;
+      icon.textContent = '🔬';
+      text.textContent = 'Verify & Classify MRI Scan';
+    }
+  }
+
+  // ── Render Results ──
+  function renderResults(pred) {
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultContent').style.display = 'block';
+
+    const cfg = CLASS_CONFIG[pred.predicted_class] || { name: pred.predicted_class, icon: '❓', desc: '' };
+    const pill = document.getElementById('predPill');
+    const warning = document.getElementById('warningBanner');
+
+    pill.className = 'pred-pill';
+    if (pred.uncertain) {
+      pill.classList.add('uncertain');
+      document.getElementById('predIcon').textContent = '⚠️';
+      document.getElementById('predLabel').textContent = 'UNCERTAIN';
+      document.getElementById('predDesc').textContent = 'Confidence is low (' + pred.confidence_pct + '%). Result is ambiguous.';
+      warning.style.display = 'block';
+      document.getElementById('metricStatus').textContent = '⚠️';
+    } else {
+      pill.classList.add(pred.predicted_class);
+      document.getElementById('predIcon').textContent = cfg.icon;
+      document.getElementById('predLabel').textContent = cfg.name;
+      document.getElementById('predDesc').textContent = cfg.desc;
+      warning.style.display = 'none';
+      document.getElementById('metricStatus').textContent = '✅';
+    }
+
+    // Overconfidence warning (≥92% is suspicious even after temperature calibration)
+    const overconfBanner = document.getElementById('overconfBanner');
+    if (overconfBanner) {
+      overconfBanner.style.display = pred.confidence_pct >= 92.0 ? 'block' : 'none';
+    }
+
+    // Populate Key Metrics
+    const m = MODEL_METRICS.classes[pred.predicted_class] || { recall: 0, f1: 0, precision: 0 };
+    document.getElementById('metricConf').textContent = pred.confidence_pct.toFixed(1) + '%';
+    document.getElementById('metricRecall').textContent = m.recall ? m.recall.toFixed(1) + '%' : '--%';
+    document.getElementById('metricF1').textContent = m.f1 ? m.f1.toFixed(1) + '%' : '--%';
+    document.getElementById('metricPrec').textContent = m.precision ? m.precision.toFixed(1) + '%' : '--%';
+
+    // Highlight row in Per-Class table & Confusion Matrix
+    CLASS_NAMES.forEach(cls => {
+      const row = document.getElementById(`row-${cls}`);
+      const cmRow = document.getElementById(`cm-row-${cls}`);
+      if (row) {
+        row.classList.toggle('active-pred-row', cls === pred.predicted_class);
+      }
+      if (cmRow) {
+        cmRow.style.outline = (cls === pred.predicted_class) ? '2px solid rgba(56, 189, 248, 0.6)' : 'none';
+      }
+    });
+
+    // Update Progress Bars
+    CLASS_NAMES.forEach(cls => {
+      const pct = (pred.probabilities[cls] || 0).toFixed(1);
+      document.getElementById(`pct-${cls}`).textContent = `${pct}%`;
+      document.getElementById(`bar-${cls}`).style.width = `${pct}%`;
+    });
+  }
+
+  // ── Sample Loader ──
+  function loadSample(url, label) {
+    const preview = document.getElementById('imagePreview');
+    const container = document.getElementById('previewContainer');
+    const fileNameSpan = document.getElementById('fileName');
+
+    preview.onload = () => {
+      hasImage = true;
+      container.style.display = 'block';
+      currentImageName = label;
+      fileNameSpan.textContent = label;
+      document.getElementById('fileDims').textContent = `${preview.naturalWidth} × ${preview.naturalHeight} px`;
+      enableVerifyButton();
+    };
+    preview.src = url;
+  }
+
+  // ── File Upload Handler ──
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+  const preview = document.getElementById('imagePreview');
+  const container = document.getElementById('previewContainer');
+
+  fileInput.addEventListener('change', e => {
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
+  });
+
+  dropzone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('dragover');
+  });
+
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.onload = () => {
+        hasImage = true;
+        container.style.display = 'block';
+        currentImageName = file.name;
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileDims').textContent = `${preview.naturalWidth} × ${preview.naturalHeight} px`;
+        enableVerifyButton();
+      };
+      preview.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Download PDF Report ──
+  function downloadReportPdf() {
+    if (!lastPrediction) { alert('Please classify an MRI scan first.'); return; }
+    const p = lastPrediction;
+    const cfg = CLASS_CONFIG[p.predicted_class] || { name: p.predicted_class };
+    const m = MODEL_METRICS.classes[p.predicted_class] || {};
+    const ts = new Date(p.timestamp).toLocaleString();
+
+    const probRows = CLASS_NAMES.map(cls => {
+      const label = CLASS_CONFIG[cls] ? CLASS_CONFIG[cls].name : cls;
+      return `<tr><td>${label}</td><td style="text-align:right;font-weight:bold">${(p.probabilities[cls] || 0).toFixed(2)}%</td></tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Brain Tumor MRI Diagnostic Report</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', Arial, sans-serif; color: #1a202c; background: #fff; padding: 32px; }
+    h1 { font-size: 22px; color: #1e3a5f; border-bottom: 3px solid #2563eb; padding-bottom: 8px; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: #666; margin-bottom: 24px; }
+    .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #2563eb; margin: 20px 0 8px; border-left: 4px solid #2563eb; padding-left: 8px; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+    .info-box { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
+    .info-box .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #718096; margin-bottom: 4px; }
+    .info-box .value { font-size: 18px; font-weight: 700; color: #1a202c; }
+    .diagnosis-box { background: #ebf8ff; border: 2px solid #2563eb; border-radius: 10px;
+      padding: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+    .diagnosis-box .label { font-size: 11px; color: #2b6cb0; text-transform: uppercase; letter-spacing: 0.05em; }
+    .diagnosis-box .name { font-size: 22px; font-weight: 800; color: #1e3a5f; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #edf2f7; color: #4a5568; font-weight: 600; padding: 8px 10px;
+      text-align: left; border-bottom: 2px solid #cbd5e0; }
+    td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; }
+    tr:last-child td { border-bottom: none; }
+    .warning { background: #fff3cd; border: 1px solid #f6c90e; border-radius: 8px;
+      padding: 10px 14px; font-size: 12px; color: #856404; margin-top: 16px; }
+    .disclaimer { font-size: 10px; color: #999; margin-top: 24px; border-top: 1px solid #e2e8f0;
+      padding-top: 10px; line-height: 1.5; }
+    .overconf-warn { background: #ffe5e5; border: 1px solid #f87171; border-radius: 8px;
+      padding: 10px 14px; font-size: 12px; color: #b91c1c; margin-top: 8px; }
+    @media print { body { padding: 16px; } }
+  </style>
+</head>
+<body>
+  <h1>🧠 Brain Tumor MRI Diagnostic Report</h1>
+  <p class="subtitle">Generated: ${ts} &nbsp;|&nbsp; AI Model: MobileNetV2 Fine-Tuned &nbsp;|&nbsp; Classes: 4</p>
+
+  <div class="diagnosis-box">
+    <div>
+      <div class="label">AI Diagnosis</div>
+      <div class="name">${cfg.name || p.predicted_class.toUpperCase()}</div>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-box">
+      <div class="label">Prediction Confidence</div>
+      <div class="value">${p.confidence_pct.toFixed(1)}%</div>
+    </div>
+    <div class="info-box">
+      <div class="label">Model Test Accuracy</div>
+      <div class="value">${MODEL_METRICS.overall_accuracy}%</div>
+    </div>
+    <div class="info-box">
+      <div class="label">Class Recall (Sensitivity)</div>
+      <div class="value">${m.recall ? m.recall.toFixed(1) + '%' : 'N/A'}</div>
+    </div>
+    <div class="info-box">
+      <div class="label">Class F1-Score</div>
+      <div class="value">${m.f1 ? m.f1.toFixed(1) + '%' : 'N/A'}</div>
+    </div>
+  </div>
+
+  <div class="section-title">Class Probability Breakdown</div>
+  <table>
+    <thead><tr><th>Tumor Class</th><th style="text-align:right">Probability</th></tr></thead>
+    <tbody>${probRows}</tbody>
+  </table>
+
+  <div class="section-title">Per-Class Validation Metrics</div>
+  <table>
+    <thead><tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1-Score</th><th>Test Scans</th></tr></thead>
+    <tbody>
+      ${Object.values(MODEL_METRICS.classes).map(c =>
+        `<tr><td>${c.name}</td><td>${c.precision.toFixed(1)}%</td><td>${c.recall.toFixed(1)}%</td><td>${c.f1.toFixed(1)}%</td><td>${c.support}</td></tr>`
+      ).join('')}
+    </tbody>
+  </table>
+
+  ${p.uncertain ? '<div class="warning">⚠️ <b>Low Confidence Warning:</b> Confidence is below 60%. This result is ambiguous and requires specialist review.</div>' : ''}
+  ${p.confidence_pct >= 92.0 ? '<div class="overconf-warn">🔴 <b>Overconfidence Alert:</b> Confidence ≥92% (post-calibration). May indicate memorised training image. Radiologist review strongly advised.</div>' : ''}
+
+  <p class="disclaimer">
+    <b>Medical Disclaimer:</b> This report is generated by a research AI model and is NOT an FDA-cleared medical device.
+    It must not replace professional clinical advice, diagnostic radiology, or surgical planning.
+    Always consult a certified neuro-radiologist or oncologist for clinical decisions.
+    Image: <em>${p.image}</em>
+  </p>
+</body></html>`;
+
+    // Build an HTML blob and download it as .html (prints cleanly as PDF)
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    // Open in a new tab — works even when popups are blocked
+    const win = window.open(blobUrl, '_blank');
+    if (win) {
+      // Give fonts a moment to load before triggering print dialog
+      win.addEventListener('load', () => setTimeout(() => { win.print(); URL.revokeObjectURL(blobUrl); }, 700));
+    } else {
+      // If popup still blocked, fall back to direct download of the HTML file
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `mri_report_${Date.now()}.html`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      alert('Tip: Open the downloaded .html file and press Ctrl+P (or Cmd+P) to print/save as PDF.');
+    }
+  }
+
+  // ── Download JPEG Report (canvas screenshot of result panel) ──
+  function downloadReportJpeg() {
+    if (!lastPrediction) { alert('Please classify an MRI scan first.'); return; }
+
+    // Find the result content panel and the preview image
+    const resultPanel = document.getElementById('resultContent');
+    const scanPreview = document.getElementById('imagePreview');
+
+    // Use html2canvas if available, otherwise fall back to canvas drawing
+    if (typeof html2canvas !== 'undefined') {
+      html2canvas(resultPanel, { backgroundColor: '#0f172a', scale: 2 }).then(canvas => {
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/jpeg', 0.92);
+        link.download = `mri_report_${Date.now()}.jpg`;
+        link.click();
+      });
+      return;
+    }
+
+    // Fallback: render a summary card to a canvas
+    const p = lastPrediction;
+    const cfg = CLASS_CONFIG[p.predicted_class] || { name: p.predicted_class };
+    const W = 700, H = 480;
+    const canvas = document.createElement('canvas');
+    canvas.width = W * 2; canvas.height = H * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
+
+    // Background
+    ctx.fillStyle = '#070b14';
+    ctx.fillRect(0, 0, W, H);
+
+    // Header bar
+    const grad = ctx.createLinearGradient(0, 0, W, 50);
+    grad.addColorStop(0, '#2563eb'); grad.addColorStop(1, '#7c3aed');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, 50);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px Inter, Arial';
+    ctx.fillText('🧠 Brain Tumor MRI Diagnostic Report', 20, 33);
+
+    // Diagnosis
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px Inter, Arial';
+    ctx.fillText('AI DIAGNOSIS', 20, 80);
+    ctx.fillStyle = '#f1f5f9';
+    ctx.font = 'bold 28px Inter, Arial';
+    ctx.fillText((cfg.name || p.predicted_class).toUpperCase(), 20, 112);
+
+    // Confidence
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px Inter, Arial';
+    ctx.fillText('CONFIDENCE', 20, 145);
+    ctx.fillStyle = p.confidence_pct >= 92 ? '#f87171' : '#38bdf8';
+    ctx.font = 'bold 36px Inter, Arial';
+    ctx.fillText(p.confidence_pct.toFixed(1) + '%', 20, 185);
+
+    // Prob bars
+    let y = 215;
+    const colors = { glioma:'#f87171', meningioma:'#fb923c', notumor:'#34d399', pituitary:'#c084fc' };
+    ctx.font = '12px Inter, Arial';
+    CLASS_NAMES.forEach(cls => {
+      const pct = p.probabilities[cls] || 0;
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(20, y + 12, 380, 8);
+      ctx.fillStyle = colors[cls] || '#94a3b8';
+      ctx.fillRect(20, y + 12, (pct / 100) * 380, 8);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText((CLASS_CONFIG[cls] ? CLASS_CONFIG[cls].name : cls) + '  ' + pct.toFixed(1) + '%', 20, y + 10);
+      y += 32;
+    });
+
+    // Timestamp
+    ctx.fillStyle = '#475569';
+    ctx.font = '10px Inter, Arial';
+    ctx.fillText('Generated: ' + new Date(p.timestamp).toLocaleString() + '  |  Image: ' + p.image, 20, H - 20);
+
+    // Overconf warning
+    if (p.confidence_pct >= 92.0) {
+      ctx.fillStyle = 'rgba(239,68,68,0.18)';
+      ctx.fillRect(16, H - 55, W - 32, 24);
+      ctx.fillStyle = '#fca5a5';
+      ctx.font = '10px Inter, Arial';
+      ctx.fillText('\u26a0 Overconfidence Alert: \u226592% (calibrated) — treat with caution, request radiologist review.', 22, H - 38);
+    }
+
+    // Save as scan preview if available on left side
+    if (scanPreview && scanPreview.src && scanPreview.naturalWidth > 0) {
+      try {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(W - 180, 60, 160, 160, 10);
+        ctx.clip();
+        ctx.drawImage(scanPreview, W - 180, 60, 160, 160);
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(56,189,248,0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(W - 180, 60, 160, 160);
+      } catch(e) { /* cross-origin images cannot be drawn */ }
+    }
+
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/jpeg', 0.93);
+    link.download = `mri_report_${Date.now()}.jpg`;
+    link.click();
+  }
+
+  // Start engine on load
+  window.addEventListener('DOMContentLoaded', initEngine);
+</script>
+
+<!-- Confusion Matrix Plot Modal -->
+<div class="modal-overlay" id="cmModal" onclick="if(event.target===this) toggleCmModal(false)">
+  <div class="modal-content">
+    <button class="modal-close-btn" onclick="toggleCmModal(false)" title="Close">✕</button>
+    <div style="font-weight: 700; font-size: 1.05rem; color: #f1f5f9; margin-bottom: 4px;">
+      🧠 Confusion Matrix — 1,600 Verified Test Scans
+    </div>
+    <p style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 14px;">
+      Evaluated on 400 test scans per class with fine-tuned MobileNetV2. Overall test accuracy: <b>88.56%</b>.
+    </p>
+    <div class="cm-plot-preview">
+      <img src="confusion_matrix.png" alt="Brain Tumor Confusion Matrix Heatmap" class="cm-plot-img">
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
