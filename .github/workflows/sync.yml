@@ -16,4 +16,4 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git push https://BhargavRajS:$HF_TOKEN@huggingface.co/spaces/BhargavRajS/brain-tumor-classifier main --force
+          git push https://BhargavRajS:$HF_TOKEN@huggingface.co/spaces/BhargavRajS/Brain_Tumor_Detector_Revised main --force
