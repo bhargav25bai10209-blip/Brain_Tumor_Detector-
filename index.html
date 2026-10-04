@@ -1000,6 +1000,185 @@
       color: #64748b;
     }
 
+    /* ── View Processing Button & Modal ── */
+    .btn-proc-pipeline {
+      margin-top: 10px;
+      width: 100%;
+      padding: 11px 16px;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      border-radius: 12px;
+      color: #38bdf8;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .btn-proc-pipeline:hover {
+      background: rgba(56, 189, 248, 0.16);
+      border-color: rgba(56, 189, 248, 0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.15);
+    }
+
+    .proc-modal-content {
+      background: #090e1a;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 20px;
+      max-width: 1280px;
+      width: 96%;
+      max-height: 92vh;
+      overflow-y: auto;
+      padding: 24px 28px;
+      position: relative;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
+    }
+
+    .proc-flow-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      margin: 16px 0 22px 0;
+      padding: 10px 16px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+    }
+
+    .proc-step-tag {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #94a3b8;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .proc-step-tag.active {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.35);
+    }
+
+    .proc-flow-arrow {
+      color: #475569;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .proc-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 1100px) {
+      .proc-cards-grid {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 14px;
+        gap: 14px;
+      }
+      .proc-stage-card {
+        min-width: 210px;
+        flex: 0 0 210px;
+      }
+    }
+
+    .proc-stage-card {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .proc-stage-card:hover {
+      border-color: rgba(56, 189, 248, 0.35);
+      transform: translateY(-2px);
+    }
+
+    .proc-stage-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .proc-stage-num {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      background: rgba(56, 189, 248, 0.12);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .proc-stage-title {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 10px;
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+    }
+
+    .proc-canvas-wrap {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #020617;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .proc-canvas-wrap canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .proc-specs {
+      font-size: 0.76rem;
+      color: #94a3b8;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: auto;
+    }
+
+    .proc-spec-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      width: fit-content;
+    }
+
+    .proc-desc {
+      font-size: 0.73rem;
+      color: #64748b;
+      line-height: 1.4;
+    }
+
     /* Footer */
     footer {
       margin-top: auto;
@@ -1065,6 +1244,11 @@
       <button class="btn-verify" id="verifyBtn" onclick="runVerification()" disabled>
         <span id="verifyBtnIcon">🔬</span>
         <span id="verifyBtnText">Upload an MRI Scan to Verify</span>
+      </button>
+
+      <!-- VIEW PROCESSING BUTTON -->
+      <button class="btn-proc-pipeline" id="viewProcBtn" onclick="openProcessingModal()" title="View Step-by-Step AI Image Preprocessing">
+        <span>👁️</span> View Processing
       </button>
 
       <!-- Quick Test Samples -->
@@ -1330,6 +1514,9 @@
           </button>
           <button class="btn-download" id="btnDownloadJpeg" onclick="downloadReportJpeg()" style="flex: 0 0 auto; padding: 11px 14px;">
             🖼️ Save as JPEG
+          </button>
+          <button class="btn-view-cm" onclick="openProcessingModal()" style="border-color: rgba(56, 189, 248, 0.35); color: #38bdf8;">
+            👁️ View Processing
           </button>
           <button class="btn-view-cm" onclick="toggleCmModal(true)">
             📊 View Heatmap
@@ -2223,6 +2410,129 @@
     link.click();
   }
 
+  // ── Preprocessing Pipeline Modal Controller & Dynamic Multi-Stage Canvas ──
+  function openProcessingModal() {
+    const preview = document.getElementById('imagePreview');
+    const modal = document.getElementById('procModal');
+
+    if (hasImage && preview && preview.src && preview.naturalWidth > 0) {
+      renderProcessingPipeline(preview);
+      modal.style.display = 'flex';
+      return;
+    }
+
+    // Auto-load sample 1 if none loaded yet
+    loadSample('samples/sample_1.jpg', 'Sample 1 (Meningioma)');
+    const checkTimer = setInterval(() => {
+      if (preview && preview.naturalWidth > 0) {
+        clearInterval(checkTimer);
+        renderProcessingPipeline(preview);
+        modal.style.display = 'flex';
+      }
+    }, 50);
+    setTimeout(() => clearInterval(checkTimer), 2000);
+  }
+
+  function closeProcessingModal() {
+    document.getElementById('procModal').style.display = 'none';
+  }
+
+  function renderProcessingPipeline(img) {
+    const W = img.naturalWidth || 224;
+    const H = img.naturalHeight || 224;
+    const origDimsEl = document.getElementById('procOrigDims');
+    if (origDimsEl) origDimsEl.textContent = `${W} × ${H} px`;
+
+    // ── Stage 1: Original Scan ──
+    const c1 = document.getElementById('procCanvas1');
+    if (c1) {
+      const ctx1 = c1.getContext('2d');
+      c1.width = 224; c1.height = 224;
+      ctx1.clearRect(0, 0, 224, 224);
+      ctx1.drawImage(img, 0, 0, 224, 224);
+    }
+
+    // ── Stage 2: Grayscale / RGB Conversion ──
+    const c2 = document.getElementById('procCanvas2');
+    if (c2) {
+      const ctx2 = c2.getContext('2d');
+      c2.width = 224; c2.height = 224;
+      ctx2.drawImage(img, 0, 0, 224, 224);
+      const id2 = ctx2.getImageData(0, 0, 224, 224);
+      const d2 = id2.data;
+      for (let i = 0; i < d2.length; i += 4) {
+        const gray = Math.round(0.299 * d2[i] + 0.587 * d2[i+1] + 0.114 * d2[i+2]);
+        d2[i]   = gray;
+        d2[i+1] = gray;
+        d2[i+2] = gray;
+      }
+      ctx2.putImageData(id2, 0, 0);
+    }
+
+    // ── Stage 3: Resizing (224 × 224 px Bilinear) ──
+    const c3 = document.getElementById('procCanvas3');
+    if (c3) {
+      const ctx3 = c3.getContext('2d');
+      c3.width = 224; c3.height = 224;
+      ctx3.imageSmoothingEnabled = true;
+      ctx3.imageSmoothingQuality = 'high';
+      ctx3.drawImage(img, 0, 0, 224, 224);
+    }
+
+    // ── Stage 4: Normalization ([-1, 1] Range) ──
+    // Formula: (x / 127.5) - 1.0 (Zero-centered Float32 mapping)
+    const c4 = document.getElementById('procCanvas4');
+    if (c4) {
+      const ctx4 = c4.getContext('2d');
+      c4.width = 224; c4.height = 224;
+      ctx4.drawImage(img, 0, 0, 224, 224);
+      const id4 = ctx4.getImageData(0, 0, 224, 224);
+      const d4 = id4.data;
+      for (let i = 0; i < d4.length; i += 4) {
+        const normVal = ((0.299 * d4[i] + 0.587 * d4[i+1] + 0.114 * d4[i+2]) / 127.5) - 1.0;
+        if (normVal < 0) {
+          const t = Math.abs(normVal);
+          d4[i]   = Math.round(15 * (1 - t));
+          d4[i+1] = Math.round(90 * t + 30 * (1 - t));
+          d4[i+2] = Math.round(200 * t + 60 * (1 - t));
+        } else {
+          const t = normVal;
+          d4[i]   = Math.round(245 * t + 30 * (1 - t));
+          d4[i+1] = Math.round(170 * t + 30 * (1 - t));
+          d4[i+2] = Math.round(70 * t + 60 * (1 - t));
+        }
+      }
+      ctx4.putImageData(id4, 0, 0);
+    }
+
+    // ── Stage 5: Model Input (Tensor Shape: [1, 224, 224, 3]) ──
+    const c5 = document.getElementById('procCanvas5');
+    if (c5) {
+      const ctx5 = c5.getContext('2d');
+      c5.width = 224; c5.height = 224;
+      ctx5.drawImage(img, 0, 0, 224, 224);
+      // Tensor spatial partitioning grid
+      ctx5.strokeStyle = 'rgba(56, 189, 248, 0.22)';
+      ctx5.lineWidth = 1;
+      for (let g = 32; g < 224; g += 32) {
+        ctx5.beginPath(); ctx5.moveTo(g, 0); ctx5.lineTo(g, 224); ctx5.stroke();
+        ctx5.beginPath(); ctx5.moveTo(0, g); ctx5.lineTo(224, g); ctx5.stroke();
+      }
+      // Tensor bounding frame
+      ctx5.strokeStyle = '#38bdf8';
+      ctx5.lineWidth = 2;
+      ctx5.strokeRect(2, 2, 220, 220);
+      // Corner brackets
+      const bLen = 14;
+      ctx5.strokeStyle = '#34d399';
+      ctx5.lineWidth = 3;
+      ctx5.beginPath(); ctx5.moveTo(4, 4 + bLen); ctx5.lineTo(4, 4); ctx5.lineTo(4 + bLen, 4); ctx5.stroke();
+      ctx5.beginPath(); ctx5.moveTo(220 - bLen, 4); ctx5.lineTo(220, 4); ctx5.lineTo(220, 4 + bLen); ctx5.stroke();
+      ctx5.beginPath(); ctx5.moveTo(4, 220 - bLen); ctx5.lineTo(4, 220); ctx5.lineTo(4 + bLen, 220); ctx5.stroke();
+      ctx5.beginPath(); ctx5.moveTo(220 - bLen, 220); ctx5.lineTo(220, 220); ctx5.lineTo(220, 220 - bLen); ctx5.stroke();
+    }
+  }
+
   // Start engine on load
   window.addEventListener('DOMContentLoaded', initEngine);
 </script>
@@ -2239,6 +2549,120 @@
     </p>
     <div class="cm-plot-preview">
       <img src="confusion_matrix.png" alt="Brain Tumor Confusion Matrix Heatmap" class="cm-plot-img">
+    </div>
+  </div>
+</div>
+
+<!-- ── Preprocessing Pipeline Modal (Side-by-Side Images) ── -->
+<div class="modal-overlay" id="procModal" onclick="if(event.target===this) closeProcessingModal()">
+  <div class="proc-modal-content">
+    <button class="modal-close-btn" onclick="closeProcessingModal()" title="Close">✕</button>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 1.4rem;">👁️</span>
+      <div>
+        <div style="font-weight: 800; font-size: 1.15rem; color: #f1f5f9; letter-spacing: -0.01em;">
+          Neural Image Preprocessing Pipeline
+        </div>
+        <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">
+          Live step-by-step transformation from uploaded MRI scan to MobileNetV2 input tensor.
+        </p>
+      </div>
+    </div>
+
+    <!-- Sequential Flow Banner -->
+    <div class="proc-flow-banner">
+      <span class="proc-step-tag">Original</span>
+      <span class="proc-flow-arrow">➔</span>
+      <span class="proc-step-tag">Grayscale / RGB Conversion</span>
+      <span class="proc-flow-arrow">➔</span>
+      <span class="proc-step-tag">Resizing</span>
+      <span class="proc-flow-arrow">➔</span>
+      <span class="proc-step-tag">Normalization</span>
+      <span class="proc-flow-arrow">➔</span>
+      <span class="proc-step-tag active">Model Input</span>
+    </div>
+
+    <!-- Side-by-Side Images Grid -->
+    <div class="proc-cards-grid">
+      <!-- 1. Original -->
+      <div class="proc-stage-card">
+        <div class="proc-stage-header">
+          <span class="proc-stage-num">STAGE 01</span>
+          <span style="font-size: 0.72rem; color: #64748b;">Source</span>
+        </div>
+        <div class="proc-stage-title">Original</div>
+        <div class="proc-canvas-wrap">
+          <canvas id="procCanvas1"></canvas>
+        </div>
+        <div class="proc-specs">
+          <div><span class="proc-spec-pill" id="procOrigDims">512 × 512 px</span></div>
+          <div class="proc-desc">Raw user MRI upload before any modification. Native resolution and color profile.</div>
+        </div>
+      </div>
+
+      <!-- 2. Grayscale / RGB Conversion -->
+      <div class="proc-stage-card">
+        <div class="proc-stage-header">
+          <span class="proc-stage-num">STAGE 02</span>
+          <span style="font-size: 0.72rem; color: #64748b;">Format</span>
+        </div>
+        <div class="proc-stage-title">Grayscale / RGB Conversion</div>
+        <div class="proc-canvas-wrap">
+          <canvas id="procCanvas2"></canvas>
+        </div>
+        <div class="proc-specs">
+          <div><span class="proc-spec-pill">RGB 3-Channel</span></div>
+          <div class="proc-desc">Standardized to 3-channel RGB (R=G=B) to ensure compatibility with pre-trained vision weights.</div>
+        </div>
+      </div>
+
+      <!-- 3. Resizing -->
+      <div class="proc-stage-card">
+        <div class="proc-stage-header">
+          <span class="proc-stage-num">STAGE 03</span>
+          <span style="font-size: 0.72rem; color: #64748b;">Spatial</span>
+        </div>
+        <div class="proc-stage-title">Resizing</div>
+        <div class="proc-canvas-wrap">
+          <canvas id="procCanvas3"></canvas>
+        </div>
+        <div class="proc-specs">
+          <div><span class="proc-spec-pill">224 × 224 px</span></div>
+          <div class="proc-desc">High-quality bilinear spatial scaling matching the exact input layer architecture.</div>
+        </div>
+      </div>
+
+      <!-- 4. Normalization -->
+      <div class="proc-stage-card">
+        <div class="proc-stage-header">
+          <span class="proc-stage-num">STAGE 04</span>
+          <span style="font-size: 0.72rem; color: #64748b;">Scaling</span>
+        </div>
+        <div class="proc-stage-title">Normalization</div>
+        <div class="proc-canvas-wrap">
+          <canvas id="procCanvas4"></canvas>
+        </div>
+        <div class="proc-specs">
+          <div><span class="proc-spec-pill">[-1.0, +1.0]</span></div>
+          <div class="proc-desc"><code>(x / 127.5) - 1.0</code> scales pixel intensities to zero-mean Float32 tensor distribution.</div>
+        </div>
+      </div>
+
+      <!-- 5. Model Input -->
+      <div class="proc-stage-card" style="border-color: rgba(56, 189, 248, 0.3);">
+        <div class="proc-stage-header">
+          <span class="proc-stage-num" style="background: rgba(52, 211, 153, 0.15); color: #34d399;">STAGE 05</span>
+          <span style="font-size: 0.72rem; color: #34d399; font-weight: 600;">Inference</span>
+        </div>
+        <div class="proc-stage-title">Model Input</div>
+        <div class="proc-canvas-wrap">
+          <canvas id="procCanvas5"></canvas>
+        </div>
+        <div class="proc-specs">
+          <div><span class="proc-spec-pill" style="color: #34d399; background: rgba(52, 211, 153, 0.1);">[1, 224, 224, 3]</span></div>
+          <div class="proc-desc">Formatted 4D batch tensor fed directly into the TFLite WebAssembly neural engine.</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
