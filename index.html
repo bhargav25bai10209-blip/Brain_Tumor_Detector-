@@ -344,6 +344,11 @@
       color: #fde047;
       border: 1px solid rgba(234, 179, 8, 0.4);
     }
+    .pred-pill.invalid {
+      background: rgba(100, 116, 139, 0.18);
+      color: #94a3b8;
+      border: 1px solid rgba(100, 116, 139, 0.45);
+    }
 
     .pred-desc { color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; }
 
@@ -406,6 +411,39 @@
       font-size: 0.85rem;
       margin-bottom: 14px;
       display: none;
+    }
+
+    /* Invalid / Out-of-Distribution Image Banner */
+    .invalid-banner {
+      background: linear-gradient(135deg, rgba(100,116,139,0.18), rgba(51,65,85,0.22));
+      border: 1px solid rgba(100, 116, 139, 0.45);
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: #cbd5e1;
+      font-size: 0.88rem;
+      margin-bottom: 16px;
+      display: none;
+      line-height: 1.55;
+    }
+    .invalid-banner .inv-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .invalid-banner .inv-reasons {
+      margin: 8px 0 0 0;
+      padding-left: 18px;
+      color: #94a3b8;
+      font-size: 0.82rem;
+    }
+    .invalid-banner .inv-reasons li { margin-bottom: 3px; }
+    .metric-card.invalid-dim {
+      opacity: 0.28;
+      pointer-events: none;
     }
 
     /* Probabilities */
@@ -851,6 +889,17 @@
           🔴 <b>Overconfidence Alert:</b> Confidence is ≥92% (even after calibration). This may indicate a memorised training image or a very close match. Treat with caution and seek radiologist review.
         </div>
 
+        <!-- Invalid / Out-of-Distribution image -->
+        <div class="invalid-banner" id="invalidBanner">
+          <div class="inv-title">🚫 Invalid Picture Entry — Not an MRI Scan</div>
+          The uploaded image does not appear to be a valid brain MRI scan. The model's probability distribution is nearly uniform, indicating it cannot identify any recognisable MRI pattern.
+          <ul class="inv-reasons">
+            <li>Entropy score is above the out-of-distribution threshold</li>
+            <li>No single class exceeds the minimum confidence floor</li>
+            <li>Please upload a <b>grayscale or T1/T2-weighted brain MRI</b> image</li>
+          </ul>
+        </div>
+
         <div class="prediction-header">
           <div class="pred-pill" id="predPill">
             <span id="predIcon">⚪</span>
@@ -1139,6 +1188,21 @@
   // This prevents both overconfidence (100%) AND excessive uncertainty.
   const TEMPERATURE = 0.7273;
 
+  // ── Out-of-Distribution (OOD) Detection Thresholds ──
+  // Max softmax entropy for 4 classes = ln(4) ≈ 1.386.
+  // If entropy > ENTROPY_THRESHOLD, the model has no confident MRI pattern → invalid image.
+  // CONF_FLOOR: additional guard — at least one class must clear this minimum.
+  const ENTROPY_THRESHOLD = 1.20;   // ~87% of max entropy
+  const CONF_FLOOR        = 40.0;   // percent — valid MRI scans always push ≥40% to one class
+
+  function computeEntropy(probs) {
+    // Shannon entropy in nats over the calibrated probability array
+    return probs.reduce((sum, p) => {
+      const pn = p / 100;  // probs are in percent
+      return sum - (pn > 1e-9 ? pn * Math.log(pn) : 0);
+    }, 0);
+  }
+
   function applySoftmaxWithTemperature(rawLogits, T) {
     // rawLogits: Float32Array of softmax probabilities from the model
     // We recover approximate logits via log, scale by T, then re-apply softmax
@@ -1319,12 +1383,19 @@
         }
       });
 
+      // ── OOD / Invalid Image Check ──
+      const probArray = CLASS_NAMES.map(cls => probs[cls]);
+      const entropy   = computeEntropy(probArray);
+      const isInvalid = (entropy > ENTROPY_THRESHOLD) || (maxProb < CONF_FLOOR);
+
       const m = MODEL_METRICS.classes[predClass] || {};
       lastPrediction = {
         image: currentImageName,
         predicted_class: predClass,
         confidence_pct: parseFloat(maxProb.toFixed(2)),
-        uncertain: maxProb < CONF_THRESHOLD,
+        entropy: parseFloat(entropy.toFixed(4)),
+        invalid: isInvalid,
+        uncertain: !isInvalid && maxProb < 60,
         probabilities: probs,
         timestamp: new Date().toISOString(),
         evaluation_metrics: {
@@ -1368,53 +1439,84 @@
     const pill = document.getElementById('predPill');
     const warning = document.getElementById('warningBanner');
 
+    // Hide all banners first
+    const invalidBanner  = document.getElementById('invalidBanner');
+    const overconfBanner = document.getElementById('overconfBanner');
+    warning.style.display      = 'none';
+    invalidBanner.style.display  = 'none';
+    overconfBanner.style.display = 'none';
+
+    // Dim / un-dim metric cards
+    document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('invalid-dim'));
+
     pill.className = 'pred-pill';
-    if (pred.uncertain) {
+
+    if (pred.invalid) {
+      // ── Invalid / OOD image ──
+      pill.classList.add('invalid');
+      document.getElementById('predIcon').textContent  = '🚫';
+      document.getElementById('predLabel').textContent = 'INVALID IMAGE';
+      document.getElementById('predDesc').textContent  =
+        'This image is not a recognisable brain MRI scan. '
+        + 'Entropy: ' + (pred.entropy || 0).toFixed(3) + ' nats '
+        + '(threshold: ' + ENTROPY_THRESHOLD.toFixed(2) + '). '
+        + 'Please upload a valid T1/T2-weighted brain MRI.';
+      invalidBanner.style.display = 'block';
+      document.getElementById('metricStatus').textContent = '🚫';
+
+      // Dim metric cards — values are meaningless for OOD images
+      document.querySelectorAll('.metric-card').forEach(c => c.classList.add('invalid-dim'));
+      document.getElementById('metricConf').textContent   = '--';
+      document.getElementById('metricRecall').textContent = '--';
+      document.getElementById('metricF1').textContent     = '--';
+      document.getElementById('metricPrec').textContent   = '--';
+
+    } else if (pred.uncertain) {
+      // ── Uncertain (low confidence but valid MRI pattern) ──
       pill.classList.add('uncertain');
-      document.getElementById('predIcon').textContent = '⚠️';
+      document.getElementById('predIcon').textContent  = '⚠️';
       document.getElementById('predLabel').textContent = 'UNCERTAIN';
-      document.getElementById('predDesc').textContent = 'Confidence is low (' + pred.confidence_pct + '%). Result is ambiguous.';
+      document.getElementById('predDesc').textContent  = 'Confidence is low (' + pred.confidence_pct + '%). Result is ambiguous — consult a radiologist.';
       warning.style.display = 'block';
       document.getElementById('metricStatus').textContent = '⚠️';
+
+      const mu = MODEL_METRICS.classes[pred.predicted_class] || {};
+      document.getElementById('metricConf').textContent   = pred.confidence_pct.toFixed(1) + '%';
+      document.getElementById('metricRecall').textContent = mu.recall    ? mu.recall.toFixed(1)    + '%' : '--%';
+      document.getElementById('metricF1').textContent     = mu.f1        ? mu.f1.toFixed(1)        + '%' : '--%';
+      document.getElementById('metricPrec').textContent   = mu.precision ? mu.precision.toFixed(1) + '%' : '--%';
+
     } else {
+      // ── Normal valid prediction ──
       pill.classList.add(pred.predicted_class);
-      document.getElementById('predIcon').textContent = cfg.icon;
+      document.getElementById('predIcon').textContent  = cfg.icon;
       document.getElementById('predLabel').textContent = cfg.name;
-      document.getElementById('predDesc').textContent = cfg.desc;
-      warning.style.display = 'none';
+      document.getElementById('predDesc').textContent  = cfg.desc;
       document.getElementById('metricStatus').textContent = '✅';
+
+      // Overconfidence guard
+      if (pred.confidence_pct >= 92.0) overconfBanner.style.display = 'block';
+
+      const mv = MODEL_METRICS.classes[pred.predicted_class] || {};
+      document.getElementById('metricConf').textContent   = pred.confidence_pct.toFixed(1) + '%';
+      document.getElementById('metricRecall').textContent = mv.recall    ? mv.recall.toFixed(1)    + '%' : '--%';
+      document.getElementById('metricF1').textContent     = mv.f1        ? mv.f1.toFixed(1)        + '%' : '--%';
+      document.getElementById('metricPrec').textContent   = mv.precision ? mv.precision.toFixed(1) + '%' : '--%';
     }
 
-    // Overconfidence warning (≥92% is suspicious even after temperature calibration)
-    const overconfBanner = document.getElementById('overconfBanner');
-    if (overconfBanner) {
-      overconfBanner.style.display = pred.confidence_pct >= 92.0 ? 'block' : 'none';
-    }
-
-    // Populate Key Metrics
-    const m = MODEL_METRICS.classes[pred.predicted_class] || { recall: 0, f1: 0, precision: 0 };
-    document.getElementById('metricConf').textContent = pred.confidence_pct.toFixed(1) + '%';
-    document.getElementById('metricRecall').textContent = m.recall ? m.recall.toFixed(1) + '%' : '--%';
-    document.getElementById('metricF1').textContent = m.f1 ? m.f1.toFixed(1) + '%' : '--%';
-    document.getElementById('metricPrec').textContent = m.precision ? m.precision.toFixed(1) + '%' : '--%';
-
-    // Highlight row in Per-Class table & Confusion Matrix
+    // Highlight row in Per-Class table & Confusion Matrix (skip when invalid)
     CLASS_NAMES.forEach(cls => {
-      const row = document.getElementById(`row-${cls}`);
+      const row   = document.getElementById(`row-${cls}`);
       const cmRow = document.getElementById(`cm-row-${cls}`);
-      if (row) {
-        row.classList.toggle('active-pred-row', cls === pred.predicted_class);
-      }
-      if (cmRow) {
-        cmRow.style.outline = (cls === pred.predicted_class) ? '2px solid rgba(56, 189, 248, 0.6)' : 'none';
-      }
+      if (row)   row.classList.toggle('active-pred-row', !pred.invalid && cls === pred.predicted_class);
+      if (cmRow) cmRow.style.outline = (!pred.invalid && cls === pred.predicted_class) ? '2px solid rgba(56,189,248,0.6)' : 'none';
     });
 
-    // Update Progress Bars
+    // Update Probability Bars
     CLASS_NAMES.forEach(cls => {
       const pct = (pred.probabilities[cls] || 0).toFixed(1);
-      document.getElementById(`pct-${cls}`).textContent = `${pct}%`;
-      document.getElementById(`bar-${cls}`).style.width = `${pct}%`;
+      document.getElementById(`pct-${cls}`).textContent  = `${pct}%`;
+      document.getElementById(`bar-${cls}`).style.width  = `${pct}%`;
     });
   }
 
