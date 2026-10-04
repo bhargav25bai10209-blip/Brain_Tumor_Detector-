@@ -1,4 +1,8 @@
-# Exclude Python backend and server environments from Vercel static build
+# ── Vercel Static Deployment — Exclusion List ──
+# Only index.html, model.tflite, samples/, confusion_matrix.png,
+# class_names.json, temperature.json, training_history.json are served.
+
+# Python backend & training scripts (not needed for static site)
 requirements.txt
 runtime.txt
 app.py
@@ -8,17 +12,29 @@ convert_to_tfjs.py
 predict.py
 __pycache__/
 *.py[cod]
+
+# Python virtual environments
 .venv*/
 venv/
 env/
 .env
 
-# Exclude native Python/Keras weights (Vercel uses client-side tfjs_model/)
+# Heavy Keras/H5 model weights (NOT needed — app uses model.tflite)
 brain_tumor_model.h5
 brain_tumor_model.keras
-model.tflite
 
-# Exclude training datasets and local space clones
+# Legacy TFJS model shards (NOT needed — app now uses TFLite WASM)
+tfjs_model/
+
+# Training datasets and local clones
 MRI_dataset/
 hf_space/
+
+# CI/CD workflows (no build step on Vercel)
 .github/
+
+# Large generated images not used by the web app
+gradcam_samples.png
+sample_predictions.png
+training_history.png
+classification_report.txt
