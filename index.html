@@ -768,6 +768,238 @@
       margin-top: 14px;
     }
 
+    /* ── Model Performance Research Dashboard Section ── */
+    .perf-dashboard {
+      margin-top: 10px;
+      margin-bottom: 28px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px 26px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .perf-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .perf-title-group {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .perf-title {
+      font-size: 1.22rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .perf-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .perf-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.3fr;
+      gap: 18px;
+    }
+
+    @media (max-width: 1040px) {
+      .perf-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .perf-graph-card {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .perf-grid {
+        grid-template-columns: 1fr;
+      }
+      .perf-graph-card {
+        grid-column: span 1;
+      }
+    }
+
+    .perf-subcard {
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 14px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .perf-subcard-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .perf-stat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .perf-stat-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .perf-stat-row:hover {
+      background: rgba(56, 189, 248, 0.06);
+      border-color: rgba(56, 189, 248, 0.2);
+    }
+
+    .perf-stat-label {
+      font-size: 0.86rem;
+      color: #cbd5e1;
+      font-weight: 500;
+    }
+
+    .perf-stat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .perf-stat-val.highlight {
+      color: #34d399;
+      background: rgba(52, 211, 153, 0.12);
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(52, 211, 153, 0.25);
+    }
+
+    /* ── Graph Styles ── */
+    .perf-graph-card {
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 14px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .graph-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .graph-bar-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .graph-bar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+
+    .graph-bar-name {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: #e2e8f0;
+    }
+
+    .graph-bar-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .graph-track {
+      height: 11px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .graph-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .graph-fill-glioma {
+      background: linear-gradient(90deg, #f87171, #ef4444);
+      box-shadow: 0 0 10px rgba(248, 113, 113, 0.4);
+    }
+    .graph-fill-meningioma {
+      background: linear-gradient(90deg, #fb923c, #f97316);
+      box-shadow: 0 0 10px rgba(251, 146, 60, 0.4);
+    }
+    .graph-fill-notumor {
+      background: linear-gradient(90deg, #34d399, #10b981);
+      box-shadow: 0 0 10px rgba(52, 211, 153, 0.4);
+    }
+    .graph-fill-pituitary {
+      background: linear-gradient(90deg, #c084fc, #a855f7);
+      box-shadow: 0 0 10px rgba(192, 132, 252, 0.4);
+    }
+
+    .graph-axis {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      padding-top: 6px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.1);
+      font-size: 0.72rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: #64748b;
+    }
+
     /* Footer */
     footer {
       margin-top: auto;
@@ -1108,6 +1340,143 @@
     </div>
 
   </div>
+
+  <!-- ── Model Performance Research Section ── -->
+  <section class="perf-dashboard" aria-label="Model Performance">
+    <div class="perf-header">
+      <div class="perf-title-group">
+        <h2 class="perf-title">
+          <span>⚡</span> MODEL PERFORMANCE
+        </h2>
+        <span class="perf-badge">
+          <span>🔬</span> Independent Test Set (N = 1,600)
+        </span>
+      </div>
+      <div style="font-size: 0.8rem; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">
+        Status: <span style="color: #34d399; font-weight: 600;">Benchmark Verified</span>
+      </div>
+    </div>
+
+    <div class="perf-grid">
+      <!-- 1. Classification Metrics -->
+      <div class="perf-subcard">
+        <div class="perf-subcard-title">
+          <span>📊</span> Core Classification Metrics
+        </div>
+        <div class="perf-stat-list">
+          <div class="perf-stat-row">
+            <span class="perf-stat-label">Accuracy</span>
+            <span class="perf-stat-val highlight">88.6%</span>
+          </div>
+          <div class="perf-stat-row">
+            <span class="perf-stat-label">Macro Precision</span>
+            <span class="perf-stat-val">89.0%</span>
+          </div>
+          <div class="perf-stat-row">
+            <span class="perf-stat-label">Macro Recall</span>
+            <span class="perf-stat-val">88.6%</span>
+          </div>
+          <div class="perf-stat-row">
+            <span class="perf-stat-label">Macro F1 Score</span>
+            <span class="perf-stat-val">88.3%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Architecture & Dataset Specs -->
+      <div class="perf-subcard">
+        <div class="perf-subcard-title">
+          <span>⚙️</span> Specifications
+        </div>
+        <div class="perf-stat-list">
+          <div class="perf-stat-row">
+            <span class="perf-stat-label">Validation Images</span>
+            <span class="perf-stat-val" style="color: #e2e8f0;">1,600</span>
+          </div>
+          <div class="perf-stat-row">
+            <span class="perf-stat-label">Classes</span>
+            <span class="perf-stat-val" style="color: #e2e8f0;">4</span>
+          </div>
+          <div class="perf-stat-row">
+            <span class="perf-stat-label">Architecture</span>
+            <span class="perf-stat-val" style="color: #38bdf8;">MobileNetV2</span>
+          </div>
+          <div class="perf-stat-row">
+            <span class="perf-stat-label">Input Size</span>
+            <span class="perf-stat-val" style="color: #e2e8f0;">224 × 224</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Class-wise F1 Score Graph -->
+      <div class="perf-graph-card">
+        <div class="perf-subcard-title" style="margin-bottom: 12px;">
+          <span>📈</span> Class-wise F1 Score
+        </div>
+        <div class="graph-bars">
+          <!-- Glioma -->
+          <div class="graph-bar-row">
+            <div class="graph-bar-header">
+              <span class="graph-bar-name">
+                <span class="class-dot dot-glioma"></span> Glioma
+              </span>
+              <span class="graph-bar-val" style="color: #f87171;">84.2%</span>
+            </div>
+            <div class="graph-track">
+              <div class="graph-fill graph-fill-glioma" style="width: 84.2%;"></div>
+            </div>
+          </div>
+
+          <!-- Meningioma -->
+          <div class="graph-bar-row">
+            <div class="graph-bar-header">
+              <span class="graph-bar-name">
+                <span class="class-dot dot-meningioma"></span> Meningioma
+              </span>
+              <span class="graph-bar-val" style="color: #fb923c;">82.8%</span>
+            </div>
+            <div class="graph-track">
+              <div class="graph-fill graph-fill-meningioma" style="width: 82.8%;"></div>
+            </div>
+          </div>
+
+          <!-- No Tumor -->
+          <div class="graph-bar-row">
+            <div class="graph-bar-header">
+              <span class="graph-bar-name">
+                <span class="class-dot dot-notumor"></span> No Tumor
+              </span>
+              <span class="graph-bar-val" style="color: #34d399;">94.9%</span>
+            </div>
+            <div class="graph-track">
+              <div class="graph-fill graph-fill-notumor" style="width: 94.9%;"></div>
+            </div>
+          </div>
+
+          <!-- Pituitary -->
+          <div class="graph-bar-row">
+            <div class="graph-bar-header">
+              <span class="graph-bar-name">
+                <span class="class-dot dot-pituitary"></span> Pituitary
+              </span>
+              <span class="graph-bar-val" style="color: #c084fc;">91.2%</span>
+            </div>
+            <div class="graph-track">
+              <div class="graph-fill graph-fill-pituitary" style="width: 91.2%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="graph-axis">
+          <span>0%</span>
+          <span>25%</span>
+          <span>50%</span>
+          <span>75%</span>
+          <span>100%</span>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- Disclaimer Footer -->
   <footer>
