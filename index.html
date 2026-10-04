@@ -8,8 +8,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 
-  <!-- Standard TF.js 4.20 - high performance GraphModel loader, no WASM required -->
+  <!-- TensorFlow.js 4.20 + TFLite WebAssembly runtime -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite@0.0.1-alpha.8/dist/tf-tflite.min.js"></script>
 
   <style>
     :root {
@@ -1148,7 +1149,7 @@
     return expLogits.map(e => e / sumExp);
   }
 
-  // ── Initialize Model ──
+  // ── Initialize Model (TFLite WebAssembly) ──
   async function initEngine() {
     const dot  = document.getElementById('statusDot');
     const txt  = document.getElementById('statusText');
@@ -1158,31 +1159,36 @@
 
     try {
       wrap.style.display = 'block';
-      lbl.textContent = 'Downloading model weights (10 MB)…';
+      lbl.textContent = 'Initialising TFLite WebAssembly runtime…';
       fill.style.width = '5%';
 
-      // Standard tf.loadGraphModel — optimized frozen graph, zero layer-format incompatibilities
-      model = await tf.loadGraphModel('./tfjs_model/model.json', {
-        onProgress: function(fraction) {
-          var pct = Math.round(fraction * 100);
-          fill.style.width = pct + '%';
-          lbl.textContent = 'Downloading model… ' + pct + '%';
-        }
-      });
+      // Point the TFLite runtime at the CDN WASM binaries
+      tflite.setWasmPath(
+        'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite@0.0.1-alpha.8/dist/'
+      );
 
-      // Warm up to avoid first-prediction delay
-      var warmup = tf.zeros([1, 224, 224, 3]);
-      model.predict(warmup).dispose();
+      fill.style.width = '20%';
+      lbl.textContent = 'Downloading model.tflite (10 MB)…';
+
+      // Load the TFLite flat-buffer model — no topology/layer format issues
+      model = await tflite.loadTFLiteModel('./model.tflite');
+
+      fill.style.width = '90%';
+      lbl.textContent = 'Warming up inference engine…';
+
+      // Warm up: run one silent prediction to pre-compile WASM JIT
+      const warmup = tf.zeros([1, 224, 224, 3]);
+      const warmOut = model.predict(warmup);
+      if (warmOut && warmOut.dispose) warmOut.dispose();
       warmup.dispose();
 
+      fill.style.width = '100%';
       modelLoaded = true;
       dot.className = 'status-dot ready';
       txt.textContent = 'Neural Engine Ready';
       wrap.style.display = 'none';
 
-      if (hasImage) {
-        enableVerifyButton();
-      }
+      if (hasImage) enableVerifyButton();
     } catch (err) {
       console.error('Model load error:', err);
       dot.className = 'status-dot error';
@@ -1269,15 +1275,32 @@
     text.textContent = 'Analyzing MRI with AI…';
 
     try {
-      // 1. Preprocess
+      // 1. Preprocess — produce a [1, 224, 224, 3] float32 tensor
       const inputTensor = imageToNormalizedTensor(preview);
 
-      // 2. Predict
-      const outputTensor = model.predict(inputTensor);
-      const rawProbs = await outputTensor.data();
+      // 2. Predict via TFLite runtime
+      //    tflite.predict() may return a NamedTensorMap, Tensor, or Tensor[]
+      const raw = model.predict(inputTensor);
+      // Normalise to a single Tensor (unwrap NamedTensorMap / array)
+      let outputTensor;
+      if (raw && typeof raw === 'object' && !raw.dataId) {
+        // NamedTensorMap — grab first value
+        const vals = Object.values(raw);
+        outputTensor = vals[0];
+        vals.slice(1).forEach(t => { if (t && t.dispose) t.dispose(); });
+      } else if (Array.isArray(raw)) {
+        outputTensor = raw[0];
+        raw.slice(1).forEach(t => { if (t && t.dispose) t.dispose(); });
+      } else {
+        outputTensor = raw;
+      }
+      // Shape is [1, 4] — flatten to [4]
+      const flat = outputTensor.reshape([4]);
+      const rawProbs = await flat.data();
 
       inputTensor.dispose();
-      outputTensor.dispose();
+      flat.dispose();
+      if (outputTensor !== flat) outputTensor.dispose();
 
       // 3. Process outputs with temperature scaling
       // Apply temperature scaling to prevent overconfident predictions
