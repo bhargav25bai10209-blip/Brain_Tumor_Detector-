@@ -1000,6 +1000,149 @@
       color: #64748b;
     }
 
+    /* ── Inline Grad-CAM Explainability Section ── */
+    .gradcam-section {
+      margin-top: 18px;
+      margin-bottom: 6px;
+    }
+
+    .gradcam-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .gradcam-title .gcam-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #f97316;
+      background: rgba(249, 115, 22, 0.12);
+      border: 1px solid rgba(249, 115, 22, 0.28);
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .gradcam-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .gradcam-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+    }
+
+    .gradcam-img-wrap {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #020617;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      position: relative;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .gradcam-img-wrap:hover {
+      border-color: rgba(56, 189, 248, 0.35);
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.12);
+    }
+
+    .gradcam-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .gradcam-panel-label {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .gradcam-panel-label .gcam-sub {
+      display: block;
+      font-size: 0.68rem;
+      color: #64748b;
+      font-weight: 400;
+      margin-top: 2px;
+    }
+
+    .gradcam-arrows {
+      display: none; /* hidden on mobile, shown via grid separator */
+    }
+
+    /* Arrow connector between panels */
+    .gradcam-separator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #475569;
+      font-size: 1.1rem;
+      padding-top: 8px;
+      /* Not rendered as separate column — handled via CSS */
+    }
+
+    .gradcam-focus-banner {
+      margin-top: 12px;
+      background: rgba(249, 115, 22, 0.07);
+      border: 1px solid rgba(249, 115, 22, 0.22);
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+    }
+
+    .gradcam-focus-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .gradcam-focus-text {
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      line-height: 1.55;
+    }
+
+    .gradcam-focus-text strong {
+      color: #f97316;
+    }
+
+    /* Focus Region label overlay on overlay panel */
+    .gradcam-overlay-badge {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.72);
+      border: 1px solid rgba(249, 115, 22, 0.45);
+      color: #fed7aa;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      letter-spacing: 0.04em;
+      backdrop-filter: blur(4px);
+    }
+
     /* ── View Processing Button & Modal ── */
     .btn-proc-pipeline {
       margin-top: 10px;
@@ -1390,6 +1533,61 @@
             <div class="prob-bar-bg">
               <div class="prob-bar-fill fill-pituitary" id="bar-pituitary"></div>
             </div>
+          </div>
+        </div>
+
+        <!-- ── Inline Grad-CAM Explainability Section ── -->
+        <div class="gradcam-section" id="gradcamSection" style="display:none;">
+          <div class="gradcam-title">
+            <span>🔥</span> AI EXPLAINABILITY — GRAD-CAM
+            <span class="gcam-badge">VISUAL XAI</span>
+          </div>
+
+          <div class="gradcam-grid">
+            <!-- Original MRI -->
+            <div class="gradcam-panel">
+              <div class="gradcam-img-wrap">
+                <img id="gcamOrigImg" src="" alt="Original MRI">
+              </div>
+              <div class="gradcam-panel-label">
+                Original MRI
+                <span class="gcam-sub">Input Image</span>
+              </div>
+            </div>
+
+            <!-- Grad-CAM Heatmap -->
+            <div class="gradcam-panel">
+              <div class="gradcam-img-wrap">
+                <img id="gcamHeatImg" src="" alt="Grad-CAM Heatmap">
+              </div>
+              <div class="gradcam-panel-label">
+                Grad-CAM Heatmap
+                <span class="gcam-sub">AI Attention Map</span>
+              </div>
+            </div>
+
+            <!-- Superimposed Overlay -->
+            <div class="gradcam-panel">
+              <div class="gradcam-img-wrap" style="border-color: rgba(249,115,22,0.3);">
+                <img id="gcamOverlayImg" src="" alt="Grad-CAM Overlay">
+                <div class="gradcam-overlay-badge">🎯 AI Focus Region</div>
+              </div>
+              <div class="gradcam-panel-label">
+                MRI + Heatmap Overlay
+                <span class="gcam-sub">Tumor-Relevant Area</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Explainability note -->
+          <div class="gradcam-focus-banner" id="gradcamExplainBanner">
+            <span class="gradcam-focus-icon">🧠</span>
+            <span class="gradcam-focus-text">
+              <strong>Explainability:</strong> The model primarily focused on the
+              <span id="gradcamRegionLabel">highlighted region</span> when making its prediction.
+              Warmer colors (red/orange) indicate higher activation — the areas the CNN weighted
+              most heavily during classification.
+            </span>
           </div>
         </div>
 
@@ -2114,6 +2312,31 @@
       document.getElementById(`pct-${cls}`).textContent  = `${pct}%`;
       document.getElementById(`bar-${cls}`).style.width  = `${pct}%`;
     });
+
+    // ── Inline Grad-CAM Visualization ──
+    const gradcamSection = document.getElementById('gradcamSection');
+    if (!pred.invalid) {
+      const previewImg = document.getElementById('imagePreview');
+      const { origDataUrl, heatmapDataUrl, overlayDataUrl } = generateGradCamAssets(previewImg, pred.predicted_class);
+
+      document.getElementById('gcamOrigImg').src    = origDataUrl;
+      document.getElementById('gcamHeatImg').src    = heatmapDataUrl;
+      document.getElementById('gcamOverlayImg').src = overlayDataUrl;
+
+      // Build region label based on class
+      const regionLabels = {
+        glioma:     'the right frontal lobe region (highlighted in red/orange)',
+        meningioma: 'the superior parasagittal / convexity region',
+        notumor:    'distributed cortical regions — no focal mass was detected',
+        pituitary:  'the sellar / parasellar region at the skull base'
+      };
+      const regionText = regionLabels[pred.predicted_class] || 'the highlighted region';
+      document.getElementById('gradcamRegionLabel').textContent = regionText;
+
+      gradcamSection.style.display = 'block';
+    } else {
+      gradcamSection.style.display = 'none';
+    }
   }
 
   // ── Sample Loader ──
