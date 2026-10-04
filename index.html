@@ -1462,7 +1462,6 @@
         + '(threshold: ' + ENTROPY_THRESHOLD.toFixed(2) + '). '
         + 'Please upload a valid T1/T2-weighted brain MRI.';
       invalidBanner.style.display = 'block';
-      document.getElementById('metricStatus').textContent = '🚫';
 
       // Dim metric cards — values are meaningless for OOD images
       document.querySelectorAll('.metric-card').forEach(c => c.classList.add('invalid-dim'));
@@ -1478,7 +1477,6 @@
       document.getElementById('predLabel').textContent = 'UNCERTAIN';
       document.getElementById('predDesc').textContent  = 'Confidence is low (' + pred.confidence_pct + '%). Result is ambiguous — consult a radiologist.';
       warning.style.display = 'block';
-      document.getElementById('metricStatus').textContent = '⚠️';
 
       const mu = MODEL_METRICS.classes[pred.predicted_class] || {};
       document.getElementById('metricConf').textContent   = pred.confidence_pct.toFixed(1) + '%';
@@ -1492,7 +1490,6 @@
       document.getElementById('predIcon').textContent  = cfg.icon;
       document.getElementById('predLabel').textContent = cfg.name;
       document.getElementById('predDesc').textContent  = cfg.desc;
-      document.getElementById('metricStatus').textContent = '✅';
 
       // Overconfidence guard
       if (pred.confidence_pct >= 92.0) overconfBanner.style.display = 'block';
