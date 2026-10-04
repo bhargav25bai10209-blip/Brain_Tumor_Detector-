@@ -40,6 +40,172 @@
 
     .container { max-width: 1200px; margin: 0 auto; width: 100%; }
 
+
+    /* ── TOP NAVIGATION BAR ── */
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      width: 100%;
+      background: rgba(7, 11, 20, 0.82);
+      backdrop-filter: blur(18px) saturate(1.6);
+      -webkit-backdrop-filter: blur(18px) saturate(1.6);
+      border-bottom: 1px solid rgba(99, 179, 237, 0.12);
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      margin-bottom: 28px;
+      /* pull it outside the container padding so it spans the full viewport */
+      margin-left: -16px;
+      margin-right: -16px;
+      margin-top: -20px;
+    }
+
+    .topnav-brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #f1f5f9;
+      letter-spacing: -0.01em;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .topnav-brand .brand-icon {
+      font-size: 1.3rem;
+      filter: drop-shadow(0 0 8px rgba(56,189,248,0.6));
+    }
+
+    .topnav-brand .brand-gradient {
+      background: linear-gradient(135deg, #60a5fa 0%, #c084fc 60%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .topnav-links {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      list-style: none;
+    }
+
+    .topnav-links a {
+      display: block;
+      padding: 6px 14px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-decoration: none;
+      border-radius: 8px;
+      transition: color 0.18s, background 0.18s;
+      letter-spacing: 0.01em;
+    }
+
+    .topnav-links a:hover {
+      color: #f1f5f9;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .topnav-links a.active {
+      color: var(--accent-blue);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    /* Dynamic Status chip — replaces the old .badge-pill */
+    .nav-status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 13px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(99, 179, 237, 0.2);
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #94a3b8;
+      transition: border-color 0.3s, color 0.3s, background 0.3s;
+      flex-shrink: 0;
+    }
+
+    .nav-status-chip.state-loading {
+      border-color: rgba(251, 191, 36, 0.35);
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.06);
+    }
+
+    .nav-status-chip.state-ready {
+      border-color: rgba(52, 211, 153, 0.35);
+      color: #34d399;
+      background: rgba(52, 211, 153, 0.06);
+    }
+
+    .nav-status-chip.state-analyzing {
+      border-color: rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.07);
+    }
+
+    .nav-status-chip.state-done {
+      border-color: rgba(52, 211, 153, 0.35);
+      color: #34d399;
+      background: rgba(52, 211, 153, 0.06);
+    }
+
+    .nav-status-chip.state-error {
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.07);
+    }
+
+    /* Dot inside the chip inherits colour via currentColor */
+    .nav-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+      flex-shrink: 0;
+    }
+
+    .nav-status-dot.pulse-anim {
+      animation: blink 1.4s infinite;
+    }
+
+    .nav-status-dot.spin-anim {
+      animation: spinDot 1.1s linear infinite;
+    }
+
+    @keyframes spinDot {
+      0%   { opacity: 1; }
+      50%  { opacity: 0.25; }
+      100% { opacity: 1; }
+    }
+
+    /* Hide old badge-pill — we now use nav-status-chip */
+    .badge-pill { display: none; }
+
+    /* Hamburger for mobile (≤640 px) */
+    .topnav-mobile-toggle {
+      display: none;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 1.4rem;
+      cursor: pointer;
+      padding: 6px;
+    }
+
+    @media (max-width: 640px) {
+      .topnav-links { display: none; }
+      .topnav-links.open { display: flex; flex-direction: column; position: absolute; top: 56px; left: 0; right: 0; background: rgba(7,11,20,0.97); border-bottom: 1px solid rgba(99,179,237,0.12); padding: 10px 16px 16px; gap: 4px; }
+      .topnav-mobile-toggle { display: block; }
+      .nav-status-chip .nav-status-text { display: none; }
+    }
+
     /* ── Header ── */
     header { text-align: center; margin-bottom: 24px; }
 
@@ -1337,8 +1503,28 @@
 <body>
 
 <div class="container">
+
+  <!-- ── TOP NAVIGATION BAR ── -->
+  <nav class="topnav" id="topnav" role="navigation" aria-label="Main Navigation">
+    <a class="topnav-brand" href="#section-dashboard" onclick="smoothTo('section-dashboard'); return false;">
+      <span class="brand-icon">🧠</span>
+      <span class="brand-gradient">BrainTumor AI</span>
+    </a>
+    <ul class="topnav-links" id="topnavLinks">
+      <li><a href="#section-dashboard" id="navDashboard" onclick="smoothTo('section-dashboard'); return false;" class="active">Dashboard</a></li>
+      <li><a href="#section-analysis"  id="navAnalysis"  onclick="smoothTo('section-analysis'); return false;">Analysis</a></li>
+      <li><a href="#section-model"     id="navModel"     onclick="smoothTo('section-model'); return false;">Model</a></li>
+      <li><a href="#section-about"     id="navAbout"     onclick="smoothTo('section-about'); return false;">About</a></li>
+    </ul>
+    <div class="nav-status-chip state-loading" id="navStatusChip">
+      <span class="nav-status-dot pulse-anim" id="navStatusDot"></span>
+      <span class="nav-status-text" id="navStatusText">Loading Model…</span>
+    </div>
+    <button class="topnav-mobile-toggle" id="navToggle" aria-label="Toggle navigation" onclick="document.getElementById('topnavLinks').classList.toggle('open')">☰</button>
+  </nav>
+
   <!-- Header -->
-  <header>
+  <header id="section-dashboard">
     <div class="badge-pill">
       <span class="status-dot" id="statusDot"></span>
       <span id="statusText">Loading AI Model (9.7 MB)…</span>
@@ -1350,7 +1536,7 @@
   </header>
 
   <!-- Main Grid -->
-  <div class="grid-layout">
+  <div class="grid-layout" id="section-analysis">
 
     <!-- Left Column: Upload, Preview & Verify Button -->
     <div class="glass-card">
@@ -1727,7 +1913,7 @@
   </div>
 
   <!-- ── Model Performance Research Section ── -->
-  <section class="perf-dashboard" aria-label="Model Performance">
+  <section class="perf-dashboard" aria-label="Model Performance" id="section-model">
     <div class="perf-header">
       <div class="perf-title-group">
         <h2 class="perf-title">
@@ -1864,7 +2050,7 @@
   </section>
 
   <!-- Disclaimer Footer -->
-  <footer>
+  <footer id="section-about">
     ⚕️ <b>Medical Disclaimer:</b> This application is designed solely for research and educational demonstrations. It is <b>not an FDA-cleared medical device</b> and must not be used as a replacement for professional clinical advice, diagnostic radiology, or surgical planning. Always consult certified healthcare professionals.
   </footer>
 </div>
@@ -2011,6 +2197,69 @@
     return result;
   }
 
+  // ── Central Status Manager ──
+  // States: 'loading' | 'ready' | 'analyzing' | 'done' | 'error'
+  function setStatus(state, text) {
+    const chip = document.getElementById('navStatusChip');
+    const dot  = document.getElementById('navStatusDot');
+    const txt  = document.getElementById('navStatusText');
+
+    // Remove all state classes
+    chip.className = 'nav-status-chip state-' + state;
+
+    // Dot animation
+    dot.className = 'nav-status-dot';
+    if (state === 'loading') dot.classList.add('pulse-anim');
+    if (state === 'analyzing') dot.classList.add('spin-anim');
+
+    if (txt) txt.textContent = text;
+
+    // Also sync the legacy badge-pill (hidden but kept for JS references)
+    const legacyDot  = document.getElementById('statusDot');
+    const legacyText = document.getElementById('statusText');
+    if (legacyDot) {
+      legacyDot.className = 'status-dot' +
+        (state === 'ready' || state === 'done' ? ' ready' : state === 'error' ? ' error' : '');
+    }
+    if (legacyText) legacyText.textContent = text;
+  }
+
+  // ── Smooth Scroll helper ──
+  function smoothTo(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Update active nav link
+      document.querySelectorAll('.topnav-links a').forEach(a => a.classList.remove('active'));
+      const map = {
+        'section-dashboard': 'navDashboard',
+        'section-analysis':  'navAnalysis',
+        'section-model':     'navModel',
+        'section-about':     'navAbout'
+      };
+      const linkId = map[id];
+      if (linkId) document.getElementById(linkId)?.classList.add('active');
+    }
+    document.getElementById('topnavLinks')?.classList.remove('open');
+    return false;
+  }
+
+  // Highlight nav link on scroll
+  const _sectionIds = ['section-dashboard','section-analysis','section-model','section-about'];
+  window.addEventListener('scroll', () => {
+    let current = '';
+    _sectionIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && window.scrollY >= el.offsetTop - 80) current = id;
+    });
+    document.querySelectorAll('.topnav-links a').forEach(a => a.classList.remove('active'));
+    if (current) {
+      const map = { 'section-dashboard':'navDashboard','section-analysis':'navAnalysis','section-model':'navModel','section-about':'navAbout' };
+      const linkId = map[current];
+      if (linkId) document.getElementById(linkId)?.classList.add('active');
+    }
+  }, { passive: true });
+
   // ── Initialize Model (TFLite WebAssembly) ──
   async function initEngine() {
     const dot  = document.getElementById('statusDot');
@@ -2018,6 +2267,8 @@
     const wrap = document.getElementById('loadProgressWrap');
     const fill = document.getElementById('loadProgressFill');
     const lbl  = document.getElementById('loadProgressLabel');
+
+    setStatus('loading', 'Loading Model…');
 
     try {
       wrap.style.display = 'block';
@@ -2050,12 +2301,17 @@
       txt.textContent = 'Neural Engine Ready';
       wrap.style.display = 'none';
 
+      setStatus('ready', 'Model Ready');
+
       if (hasImage) enableVerifyButton();
     } catch (err) {
       console.error('Model load error:', err);
       dot.className = 'status-dot error';
       txt.textContent = 'Model Loading Failed';
       wrap.style.display = 'none';
+
+      setStatus('error', 'Model Error');
+
       showError(
         'Failed to load AI model. Please hard-refresh (Ctrl+F5) and try again. ' +
         'Error: ' + err.message
@@ -2130,7 +2386,8 @@
       return;
     }
 
-    // UI Loading State
+    // UI Loading State — update navbar status
+    setStatus('analyzing', 'Analyzing MRI…');
     btn.disabled = true;
     btn.classList.remove('pulse');
     icon.textContent = '⏳';
@@ -2213,13 +2470,15 @@
       // 4. Render
       renderResults(lastPrediction);
 
-      // Restore button
+      // Restore button + update navbar status
+      setStatus('done', 'Analysis Complete');
       btn.disabled = false;
       icon.textContent = '🔄';
       text.textContent = 'Re-Verify / Re-Classify';
 
     } catch (err) {
       console.error('Classification error:', err);
+      setStatus('error', 'Model Error');
       showError('Inference error: ' + err.message);
       btn.disabled = false;
       icon.textContent = '🔬';
